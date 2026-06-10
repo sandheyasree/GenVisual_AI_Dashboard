@@ -4,32 +4,48 @@ import NotFound from "@/pages/NotFound";
 import { Route, Switch } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
-import Home from "./pages/Home";
-
+import DashboardLayout from "./components/DashboardLayout";
+import PromptStudio from "./pages/PromptStudio";
+import GraphicGenerator from "./pages/GraphicGenerator";
+import Templates from "./pages/Templates";
+import History from "./pages/History";
+import Reports from "./pages/Reports";
+import Settings from "./pages/Settings";
+import ComponentSelector from "./pages/ComponentSelector";
+import SafetyChecker from "./pages/SafetyChecker";
+import CostEstimator from "./pages/CostEstimator";
+import OptimizationEngine from "./pages/OptimizationEngine";
+import PredictiveMaintenance from "./pages/PredictiveMaintenance";
+import DigitalTwin from "./pages/DigitalTwin";
 
 function Router() {
   return (
-    <Switch>
-      <Route path={"/"} component={Home} />
-      <Route path={"/404"} component={NotFound} />
-      {/* Final fallback route */}
-      <Route component={NotFound} />
-    </Switch>
+    <DashboardLayout>
+      <Switch>
+        <Route path={"/"} component={PromptStudio} />
+        <Route path={"/prompt-studio"} component={PromptStudio} />
+        <Route path={"/graphic-generator"} component={GraphicGenerator} />
+        <Route path={"/templates"} component={Templates} />
+        <Route path={"/history"} component={History} />
+        <Route path={"/reports"} component={Reports} />
+        <Route path={"/settings"} component={Settings} />
+        <Route path={"/components"} component={ComponentSelector} />
+        <Route path={"/safety"} component={SafetyChecker} />
+        <Route path={"/cost"} component={CostEstimator} />
+        <Route path={"/optimization"} component={OptimizationEngine} />
+        <Route path={"/maintenance"} component={PredictiveMaintenance} />
+        <Route path={"/digital-twin"} component={DigitalTwin} />
+        <Route path={"/404"} component={NotFound} />
+        <Route component={NotFound} />
+      </Switch>
+    </DashboardLayout>
   );
 }
-
-// NOTE: About Theme
-// - First choose a default theme according to your design style (dark or light bg), than change color palette in index.css
-//   to keep consistent foreground/background color across components
-// - If you want to make theme switchable, pass `switchable` ThemeProvider and use `useTheme` hook
 
 function App() {
   return (
     <ErrorBoundary>
-      <ThemeProvider
-        defaultTheme="light"
-        // switchable
-      >
+      <ThemeProvider defaultTheme="light">
         <TooltipProvider>
           <Toaster />
           <Router />
