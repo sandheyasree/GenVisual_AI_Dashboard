@@ -4,6 +4,7 @@ import NotFound from "@/pages/NotFound";
 import { Route, Switch } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
+import { PromptProvider } from "./contexts/PromptContext";
 import DashboardLayout from "./components/DashboardLayout";
 import PromptStudio from "./pages/PromptStudio";
 import GraphicGenerator from "./pages/GraphicGenerator";
@@ -46,10 +47,12 @@ function App() {
   return (
     <ErrorBoundary>
       <ThemeProvider defaultTheme="light">
-        <TooltipProvider>
-          <Toaster />
-          <Router />
-        </TooltipProvider>
+        <PromptProvider>
+          <TooltipProvider>
+            <Toaster />
+            <Router />
+          </TooltipProvider>
+        </PromptProvider>
       </ThemeProvider>
     </ErrorBoundary>
   );

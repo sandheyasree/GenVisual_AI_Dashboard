@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { usePrompt } from "@/contexts/PromptContext";
 
 interface AIAnalysis {
   intent: string;
@@ -37,6 +38,7 @@ export default function PromptStudio() {
   const [analysis, setAnalysis] = useState<AIAnalysis | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [copied, setCopied] = useState(false);
+  const { setPromptData } = usePrompt();
 
   const handleAnalyze = () => {
     if (!prompt.trim()) return;
@@ -55,6 +57,20 @@ export default function PromptStudio() {
         estimatedTime: selectedComplexity === "Basic" ? "2-3 min" : selectedComplexity === "Intermediate" ? "5-7 min" : "10-15 min",
       };
       setAnalysis(mockAnalysis);
+      
+      // Save to global context
+      setPromptData({
+        prompt,
+        industry: selectedIndustry,
+        complexity: selectedComplexity,
+        intent: mockAnalysis.intent,
+        category: mockAnalysis.category,
+        confidence: mockAnalysis.confidence,
+        components: mockAnalysis.components,
+        estimatedTime: mockAnalysis.estimatedTime,
+        timestamp: new Date().toISOString(),
+      });
+      
       setIsAnalyzing(false);
     }, 800);
   };

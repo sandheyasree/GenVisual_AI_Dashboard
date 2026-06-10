@@ -1,5 +1,6 @@
 import { Card } from "@/components/ui/card";
-import { Check, X } from "lucide-react";
+import { Check, X, AlertCircle } from "lucide-react";
+import { usePrompt } from "@/contexts/PromptContext";
 
 interface SafetyCheck {
   name: string;
@@ -44,17 +45,36 @@ const SAFETY_CHECKS: SafetyCheck[] = [
 ];
 
 export default function SafetyChecker() {
+  const { promptData } = usePrompt();
   const passCount = SAFETY_CHECKS.filter((c) => c.status === "pass").length;
   const failCount = SAFETY_CHECKS.filter((c) => c.status === "fail").length;
   const warningCount = SAFETY_CHECKS.filter((c) => c.status === "warning").length;
+
+  if (!promptData) {
+    return (
+      <div className="min-h-screen bg-background p-4 md:p-8">
+        <div className="max-w-6xl mx-auto">
+          <h2 className="text-3xl md:text-4xl font-bold mb-2">Safety Compliance Checker</h2>
+          <Card className="border-2 border-border bg-card p-8 text-center">
+            <AlertCircle className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+            <p className="text-lg font-bold mb-2">No Prompt Provided</p>
+            <p className="text-muted-foreground">
+              Please enter a prompt in the Prompt Studio first to run safety checks.
+            </p>
+          </Card>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background p-4 md:p-8">
       <div className="max-w-6xl mx-auto">
         <h2 className="text-3xl md:text-4xl font-bold mb-2">Safety Compliance Checker</h2>
-        <p className="text-muted-foreground mb-6">Validate your design against safety standards</p>
+        <p className="text-muted-foreground mb-4">
+          Safety validation for: <span className="font-bold text-foreground">"{promptData.prompt}"</span>
+        </p>
 
-        {/* Summary */}
         <div className="grid grid-cols-3 gap-4 mb-8">
           <Card className="border-2 border-border bg-card p-6 text-center">
             <p className="text-3xl font-bold text-primary">{passCount}</p>
@@ -70,7 +90,6 @@ export default function SafetyChecker() {
           </Card>
         </div>
 
-        {/* Status Badge */}
         <Card className="border-2 border-border bg-card p-6 mb-8">
           <div className="flex items-center gap-3">
             {failCount === 0 ? (
@@ -97,7 +116,6 @@ export default function SafetyChecker() {
           </div>
         </Card>
 
-        {/* Detailed Checks */}
         <div className="space-y-3">
           {SAFETY_CHECKS.map((check, idx) => (
             <Card key={idx} className="border-2 border-border bg-card p-6">
