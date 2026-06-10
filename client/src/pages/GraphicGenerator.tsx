@@ -4,7 +4,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Download, Share2, AlertCircle } from "lucide-react";
 import { usePrompt } from "@/contexts/PromptContext";
-import { generateSchematicContent, generateIllustrationContent, generateSVGSchematic } from "@/lib/promptAnalyzer";
+import { generateSchematicContent, generateIllustrationContent, generateSVGSchematic, generatePLCArchitecture } from "@/lib/promptAnalyzer";
 
 export default function GraphicGenerator() {
   const [activeTab, setActiveTab] = useState("diagram");
@@ -29,6 +29,7 @@ export default function GraphicGenerator() {
 
   const schematicContent = generateSchematicContent(promptData);
   const illustrationContent = generateIllustrationContent(promptData);
+  const plcArchitecture = generatePLCArchitecture(promptData);
 
   const DiagramMockup = () => (
     <div className="bg-background border-2 border-border p-8 min-h-96">
@@ -170,6 +171,79 @@ export default function GraphicGenerator() {
     </div>
   );
 
+  const PLCArchitectureMockup = () => (
+    <div className="bg-background border-2 border-border p-8 min-h-96 flex flex-col">
+      <div className="mb-4 pb-4 border-b-2 border-border">
+        <p className="text-xs font-bold text-muted-foreground mb-1">BASED ON PROMPT</p>
+        <p className="text-sm font-medium line-clamp-2">{promptData.prompt}</p>
+      </div>
+      <div className="flex-1">
+        <h3 className="text-lg font-bold mb-4">{plcArchitecture.title}</h3>
+        <div className="grid grid-cols-2 gap-6">
+          <div>
+            <p className="text-xs font-bold text-muted-foreground mb-2">CPU MODULE</p>
+            <p className="text-sm bg-primary/10 border-2 border-primary p-2 mb-4 font-medium">{plcArchitecture.cpuModule}</p>
+            <p className="text-xs font-bold text-muted-foreground mb-2">INPUT MODULES</p>
+            <ul className="space-y-1 text-sm mb-4">
+              {plcArchitecture.inputModules.map((module, idx) => (
+                <li key={idx} className="flex items-start">
+                  <span className="text-primary mr-2 font-bold">▸</span>
+                  <span>{module}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+          <div>
+            <p className="text-xs font-bold text-muted-foreground mb-2">OUTPUT MODULES</p>
+            <ul className="space-y-1 text-sm mb-4">
+              {plcArchitecture.outputModules.map((module, idx) => (
+                <li key={idx} className="flex items-start">
+                  <span className="text-primary mr-2 font-bold">▸</span>
+                  <span>{module}</span>
+                </li>
+              ))}
+            </ul>
+            <p className="text-xs font-bold text-muted-foreground mb-2">COMMUNICATION</p>
+            <ul className="space-y-1 text-sm">
+              {plcArchitecture.communicationModules.map((module, idx) => (
+                <li key={idx} className="flex items-start">
+                  <span className="text-primary mr-2 font-bold">◆</span>
+                  <span>{module}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      </div>
+      <div className="pt-4 border-t-2 border-border mt-4">
+        <div className="grid grid-cols-4 gap-4 text-center mb-4">
+          <div className="bg-card border-2 border-border p-2">
+            <p className="text-xs text-muted-foreground">Memory</p>
+            <p className="text-sm font-bold">{plcArchitecture.memorySize}</p>
+          </div>
+          <div className="bg-card border-2 border-border p-2">
+            <p className="text-xs text-muted-foreground">Scan Time</p>
+            <p className="text-sm font-bold">{plcArchitecture.scanTime}</p>
+          </div>
+          <div className="bg-card border-2 border-border p-2">
+            <p className="text-xs text-muted-foreground">Power Supply</p>
+            <p className="text-sm font-bold">{plcArchitecture.powerSupply}</p>
+          </div>
+          <div className="bg-card border-2 border-border p-2">
+            <p className="text-xs text-muted-foreground">Status</p>
+            <p className="text-sm font-bold text-primary">Ready</p>
+          </div>
+        </div>
+        <p className="text-xs font-bold text-muted-foreground mb-2">SPECIFICATIONS</p>
+        <ul className="space-y-1 text-xs text-muted-foreground">
+          {plcArchitecture.notes.map((note, idx) => (
+            <li key={idx}>✓ {note}</li>
+          ))}
+        </ul>
+      </div>
+    </div>
+  );
+
   return (
     <div className="min-h-screen bg-background p-4 md:p-8">
       <div className="max-w-6xl mx-auto">
@@ -192,7 +266,7 @@ export default function GraphicGenerator() {
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-4 border-2 border-border bg-card mb-6">
+          <TabsList className="grid w-full grid-cols-5 border-2 border-border bg-card mb-6">
             <TabsTrigger value="diagram" className="border-r-2 border-border data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
               Diagrams
             </TabsTrigger>
@@ -202,8 +276,11 @@ export default function GraphicGenerator() {
             <TabsTrigger value="schematic" className="border-r-2 border-border data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
               Schematics
             </TabsTrigger>
-            <TabsTrigger value="illustration" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+            <TabsTrigger value="illustration" className="border-r-2 border-border data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
               Illustrations
+            </TabsTrigger>
+            <TabsTrigger value="plc" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+              PLC Architecture
             </TabsTrigger>
           </TabsList>
 
@@ -288,6 +365,12 @@ export default function GraphicGenerator() {
                 </div>
               </div>
               <IllustrationMockup />
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="plc" className="space-y-4">
+            <Card className="border-2 border-border bg-card p-6">
+              <PLCArchitectureMockup />
             </Card>
           </TabsContent>
         </Tabs>

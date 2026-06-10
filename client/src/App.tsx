@@ -5,7 +5,7 @@ import { Route, Switch } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { PromptProvider } from "./contexts/PromptContext";
-import DashboardLayout from "./components/DashboardLayout";
+import SidebarLayout from "./components/SidebarLayout";
 import PromptStudio from "./pages/PromptStudio";
 import GraphicGenerator from "./pages/GraphicGenerator";
 import Templates from "./pages/Templates";
@@ -22,7 +22,7 @@ import Export from "./pages/Export";
 
 function Router() {
   return (
-    <DashboardLayout>
+    <SidebarLayout>
       <Switch>
         <Route path={"/"} component={PromptStudio} />
         <Route path={"/prompt-studio"} component={PromptStudio} />
@@ -41,14 +41,14 @@ function Router() {
         <Route path={"/404"} component={NotFound} />
         <Route component={NotFound} />
       </Switch>
-    </DashboardLayout>
+    </SidebarLayout>
   );
 }
 
 function App() {
   return (
     <ErrorBoundary>
-      <ThemeProvider defaultTheme="light">
+      <ThemeProvider defaultTheme="light" switchable>
         <PromptProvider>
           <TooltipProvider>
             <Toaster />

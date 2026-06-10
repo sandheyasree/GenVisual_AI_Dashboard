@@ -200,3 +200,184 @@ export function generateSVGSchematic(content: SchematicContent): string {
   svg += `</svg>`;
   return svg;
 }
+
+export interface PLCArchitecture {
+  title: string;
+  cpuModule: string;
+  inputModules: string[];
+  outputModules: string[];
+  communicationModules: string[];
+  memorySize: string;
+  scanTime: string;
+  powerSupply: string;
+  notes: string[];
+}
+
+export function generatePLCArchitecture(promptData: PromptData): PLCArchitecture {
+  const prompt = promptData.prompt.toLowerCase();
+  
+  const isConveyor = prompt.includes("conveyor");
+  const isFactory = prompt.includes("factory") || prompt.includes("manufacturing");
+  const isPump = prompt.includes("pump") || prompt.includes("water");
+  const isRobot = prompt.includes("robot") || prompt.includes("robotic");
+  
+  let title = "PLC Control Architecture";
+  let cpuModule = "AC500-eCo CPU";
+  let inputModules: string[] = [];
+  let outputModules: string[] = [];
+  let communicationModules: string[] = [];
+  let memorySize = "512 KB";
+  let scanTime = "10 ms";
+  let powerSupply = "24 VDC";
+  let notes: string[] = [];
+
+  if (isConveyor) {
+    title = "Conveyor PLC Control System";
+    cpuModule = "AC500-eCo CPU with 256 I/O points";
+    inputModules = [
+      "DI532 Digital Input Module (32 channels)",
+      "AI532 Analog Input Module (8 channels, 4-20mA)",
+      "Proximity Sensor Inputs (8x)",
+      "Emergency Stop Circuit",
+    ];
+    outputModules = [
+      "DO532 Digital Output Module (32 channels)",
+      "AO532 Analog Output Module (4 channels)",
+      "Motor Contactor Outputs (3x)",
+      "Alarm/Indicator Outputs (4x)",
+    ];
+    communicationModules = [
+      "Ethernet Module (PROFINET)",
+      "Serial Module (Modbus RTU)",
+    ];
+    memorySize = "1 MB Program + 512 KB Data";
+    scanTime = "5 ms";
+    powerSupply = "24 VDC, 10A";
+    notes = [
+      "Redundant safety circuits for emergency stop",
+      "Real-time speed control via VFD communication",
+      "Load cell monitoring integrated",
+      "Predictive maintenance data logging",
+    ];
+  } else if (isFactory) {
+    title = "Factory Automation PLC Architecture";
+    cpuModule = "AC500-eCo CPU with 512 I/O points";
+    inputModules = [
+      "DI532 Digital Input Module (32 channels) x3",
+      "AI532 Analog Input Module (8 channels) x2",
+      "Temperature Sensor Inputs (16x)",
+      "Pressure Sensor Inputs (16x)",
+      "Vision System Interface",
+    ];
+    outputModules = [
+      "DO532 Digital Output Module (32 channels) x3",
+      "AO532 Analog Output Module (4 channels) x2",
+      "Motor Starter Outputs (6x)",
+      "Heating Element Control (4x)",
+    ];
+    communicationModules = [
+      "Ethernet Module (PROFINET)",
+      "Ethernet Module (EtherCAT)",
+      "Serial Module (Modbus RTU)",
+      "OPC-UA Gateway",
+    ];
+    memorySize = "2 MB Program + 1 MB Data";
+    scanTime = "2 ms";
+    powerSupply = "24 VDC, 20A";
+    notes = [
+      "Multi-zone safety system with SIL 3 rating",
+      "Distributed I/O across production floor",
+      "Cloud connectivity for remote monitoring",
+      "Advanced diagnostics and predictive maintenance",
+    ];
+  } else if (isPump) {
+    title = "Pump System PLC Architecture";
+    cpuModule = "AC500-eCo CPU with 128 I/O points";
+    inputModules = [
+      "DI532 Digital Input Module (32 channels)",
+      "AI532 Analog Input Module (8 channels)",
+      "Pressure Transducer Inputs (4x)",
+      "Flow Meter Inputs (2x)",
+      "Temperature Sensor Inputs (2x)",
+    ];
+    outputModules = [
+      "DO532 Digital Output Module (32 channels)",
+      "AO532 Analog Output Module (4 channels)",
+      "Pump Motor Contactor (1x)",
+      "Valve Control Outputs (4x)",
+    ];
+    communicationModules = [
+      "Ethernet Module (PROFINET)",
+      "Serial Module (Modbus RTU)",
+    ];
+    memorySize = "512 KB Program + 256 KB Data";
+    scanTime = "10 ms";
+    powerSupply = "24 VDC, 5A";
+    notes = [
+      "Automatic pressure relief control",
+      "Flow rate monitoring and logging",
+      "Thermal protection enabled",
+      "Low-power standby mode for energy efficiency",
+    ];
+  } else if (isRobot) {
+    title = "Robotic System PLC Architecture";
+    cpuModule = "AC500-eCo CPU with 256 I/O points";
+    inputModules = [
+      "DI532 Digital Input Module (32 channels) x2",
+      "AI532 Analog Input Module (8 channels)",
+      "Robot Joint Encoders (6x)",
+      "Force/Torque Sensor Inputs (6x)",
+      "Safety Fence Inputs (4x)",
+    ];
+    outputModules = [
+      "DO532 Digital Output Module (32 channels) x2",
+      "AO532 Analog Output Module (4 channels)",
+      "Robot Motion Control Outputs (6x)",
+      "Tool Changer Control (2x)",
+    ];
+    communicationModules = [
+      "Ethernet Module (PROFINET)",
+      "Real-time Ethernet (EtherCAT)",
+      "Safety Communication Module",
+    ];
+    memorySize = "1 MB Program + 512 KB Data";
+    scanTime = "4 ms";
+    powerSupply = "48 VDC, 15A";
+    notes = [
+      "Safety-rated motion control (SIL 3)",
+      "Real-time synchronization with robot controller",
+      "Collision detection and prevention",
+      "Vision system integration for part recognition",
+    ];
+  } else {
+    inputModules = [
+      "DI532 Digital Input Module (32 channels)",
+      "AI532 Analog Input Module (8 channels)",
+    ];
+    outputModules = [
+      "DO532 Digital Output Module (32 channels)",
+      "AO532 Analog Output Module (4 channels)",
+    ];
+    communicationModules = [
+      "Ethernet Module (PROFINET)",
+      "Serial Module (Modbus RTU)",
+    ];
+    notes = [
+      "Standard industrial PLC configuration",
+      "Expandable I/O modules as needed",
+      "Modular architecture for scalability",
+    ];
+  }
+
+  return {
+    title,
+    cpuModule,
+    inputModules,
+    outputModules,
+    communicationModules,
+    memorySize,
+    scanTime,
+    powerSupply,
+    notes,
+  };
+}
