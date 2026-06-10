@@ -4,6 +4,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Download, Share2, AlertCircle } from "lucide-react";
 import { usePrompt } from "@/contexts/PromptContext";
+import { generateSchematicContent, generateIllustrationContent, generateSVGSchematic } from "@/lib/promptAnalyzer";
 
 export default function GraphicGenerator() {
   const [activeTab, setActiveTab] = useState("diagram");
@@ -25,6 +26,9 @@ export default function GraphicGenerator() {
       </div>
     );
   }
+
+  const schematicContent = generateSchematicContent(promptData);
+  const illustrationContent = generateIllustrationContent(promptData);
 
   const DiagramMockup = () => (
     <div className="bg-background border-2 border-border p-8 min-h-96">
@@ -99,42 +103,69 @@ export default function GraphicGenerator() {
         <p className="text-xs font-bold text-muted-foreground mb-1">BASED ON PROMPT</p>
         <p className="text-sm font-medium line-clamp-2">{promptData.prompt}</p>
       </div>
-      <svg viewBox="0 0 800 400" className="w-full h-auto">
-        <text x="50" y="30" fontSize="12" fontWeight="bold">SENSORS</text>
-        <rect x="30" y="50" width="50" height="30" fill="none" stroke="#1a1a1a" strokeWidth="2" />
-        <text x="55" y="70" textAnchor="middle" fontSize="10">S1</text>
-        <rect x="100" y="50" width="50" height="30" fill="none" stroke="#1a1a1a" strokeWidth="2" />
-        <text x="125" y="70" textAnchor="middle" fontSize="10">S2</text>
-        <text x="350" y="30" fontSize="12" fontWeight="bold">PLC CORE</text>
-        <rect x="300" y="50" width="100" height="80" fill="none" stroke="#e63946" strokeWidth="2" />
-        <text x="350" y="95" textAnchor="middle" fontSize="11" fontWeight="bold">AC500</text>
-        <text x="600" y="30" fontSize="12" fontWeight="bold">ACTUATORS</text>
-        <rect x="580" y="50" width="50" height="30" fill="none" stroke="#1a1a1a" strokeWidth="2" />
-        <text x="605" y="70" textAnchor="middle" fontSize="10">A1</text>
-        <rect x="650" y="50" width="50" height="30" fill="none" stroke="#1a1a1a" strokeWidth="2" />
-        <text x="675" y="70" textAnchor="middle" fontSize="10">A2</text>
-        <text x="350" y="200" fontSize="12" fontWeight="bold" textAnchor="middle">COMMUNICATION</text>
-        <rect x="250" y="220" width="200" height="40" fill="none" stroke="#1a1a1a" strokeWidth="2" />
-        <text x="350" y="245" textAnchor="middle" fontSize="10">ETHERNET / PROFIBUS</text>
-        <line x1="80" y1="80" x2="300" y2="90" stroke="#1a1a1a" strokeWidth="2" />
-        <line x1="400" y1="90" x2="580" y2="65" stroke="#1a1a1a" strokeWidth="2" />
-        <line x1="350" y1="130" x2="350" y2="220" stroke="#1a1a1a" strokeWidth="2" />
-      </svg>
+      <div className="mb-6">
+        <h3 className="text-lg font-bold mb-3">{schematicContent.title}</h3>
+        <div className="grid grid-cols-2 gap-6">
+          <div>
+            <p className="text-xs font-bold text-muted-foreground mb-2">COMPONENTS</p>
+            <ul className="space-y-1 text-sm">
+              {schematicContent.components.map((comp, idx) => (
+                <li key={idx} className="flex items-start">
+                  <span className="text-primary mr-2 font-bold">•</span>
+                  <span>{comp}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+          <div>
+            <p className="text-xs font-bold text-muted-foreground mb-2">CONNECTIONS</p>
+            <ul className="space-y-1 text-sm">
+              {schematicContent.connections.map((conn, idx) => (
+                <li key={idx} className="flex items-start">
+                  <span className="text-primary mr-2 font-bold">→</span>
+                  <span>{conn}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      </div>
+      <div className="pt-4 border-t-2 border-border">
+        <p className="text-xs font-bold text-muted-foreground mb-2">SPECIFICATIONS</p>
+        <ul className="space-y-1 text-xs text-muted-foreground">
+          {schematicContent.notes.map((note, idx) => (
+            <li key={idx}>✓ {note}</li>
+          ))}
+        </ul>
+      </div>
     </div>
   );
 
   const IllustrationMockup = () => (
-    <div className="bg-background border-2 border-border p-8 min-h-96 flex flex-col items-center justify-center">
-      <div className="mb-4 pb-4 border-b-2 border-border w-full">
+    <div className="bg-background border-2 border-border p-8 min-h-96 flex flex-col">
+      <div className="mb-4 pb-4 border-b-2 border-border">
         <p className="text-xs font-bold text-muted-foreground mb-1">BASED ON PROMPT</p>
         <p className="text-sm font-medium line-clamp-2">{promptData.prompt}</p>
       </div>
-      <div className="text-center">
-        <div className="w-32 h-32 bg-primary/10 border-2 border-primary mx-auto mb-4 flex items-center justify-center">
+      <div className="flex-1 flex flex-col items-center justify-center">
+        <div className="w-40 h-40 bg-primary/10 border-2 border-primary mb-6 flex items-center justify-center">
           <div className="text-6xl">🏭</div>
         </div>
-        <h3 className="text-lg font-bold mb-2">Smart Factory Layout</h3>
-        <p className="text-sm text-muted-foreground">Conceptual visualization of industrial system</p>
+        <h3 className="text-xl font-bold mb-2 text-center">{illustrationContent.title}</h3>
+        <p className="text-sm text-muted-foreground text-center mb-6">
+          {illustrationContent.layout}
+        </p>
+        <div className="w-full">
+          <p className="text-xs font-bold text-muted-foreground mb-2">KEY FEATURES</p>
+          <ul className="space-y-1 text-sm">
+            {illustrationContent.keyFeatures.map((feature, idx) => (
+              <li key={idx} className="flex items-start">
+                <span className="text-primary mr-2 font-bold">✓</span>
+                <span>{feature}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
       </div>
     </div>
   );
@@ -222,8 +253,8 @@ export default function GraphicGenerator() {
             <Card className="border-2 border-border bg-card p-6">
               <div className="flex items-center justify-between mb-4">
                 <div>
-                  <h3 className="text-lg font-bold">PLC Architecture Diagram</h3>
-                  <p className="text-sm text-muted-foreground">Sensor-PLC-Actuator connections</p>
+                  <h3 className="text-lg font-bold">{schematicContent.title}</h3>
+                  <p className="text-sm text-muted-foreground">Detailed system architecture and components</p>
                 </div>
                 <div className="flex gap-2">
                   <Button variant="outline" size="sm" className="border-2 border-border">
@@ -243,8 +274,8 @@ export default function GraphicGenerator() {
             <Card className="border-2 border-border bg-card p-6">
               <div className="flex items-center justify-between mb-4">
                 <div>
-                  <h3 className="text-lg font-bold">Factory Layout Illustration</h3>
-                  <p className="text-sm text-muted-foreground">Conceptual system visualization</p>
+                  <h3 className="text-lg font-bold">{illustrationContent.title}</h3>
+                  <p className="text-sm text-muted-foreground">System layout and key features</p>
                 </div>
                 <div className="flex gap-2">
                   <Button variant="outline" size="sm" className="border-2 border-border">
