@@ -21,6 +21,7 @@ const NAV_ITEMS = [
   { label: "Optimization", href: "/optimization" },
   { label: "Maintenance", href: "/maintenance" },
   { label: "Digital Twin", href: "/digital-twin" },
+  { label: "Export", href: "/export" },
   { label: "Settings", href: "/settings" },
 ];
 

@@ -18,6 +18,7 @@ import CostEstimator from "./pages/CostEstimator";
 import OptimizationEngine from "./pages/OptimizationEngine";
 import PredictiveMaintenance from "./pages/PredictiveMaintenance";
 import DigitalTwin from "./pages/DigitalTwin";
+import Export from "./pages/Export";
 
 function Router() {
   return (
@@ -36,6 +37,7 @@ function Router() {
         <Route path={"/optimization"} component={OptimizationEngine} />
         <Route path={"/maintenance"} component={PredictiveMaintenance} />
         <Route path={"/digital-twin"} component={DigitalTwin} />
+        <Route path={"/export"} component={Export} />
         <Route path={"/404"} component={NotFound} />
         <Route component={NotFound} />
       </Switch>
