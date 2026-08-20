@@ -17,9 +17,9 @@ interface AIAnalysis {
 
 const EXAMPLE_PROMPTS = [
   "Create a simple electrical system with one power source, one circuit breaker, and one motor",
+  "Create a simple electrical system with two power source, two circuit breaker, and four motor",
   "Design a conveyor system with 3 motors, emergency stop, PLC and HMI",
   "Generate a water treatment process flow diagram with 2 pumps and 2 valves",
-  "Power Systems substation with 2 power sources, 2 transformers, 4 circuit breakers, and 2 motors",
 ];
 
 const INDUSTRIES = [
@@ -34,61 +34,66 @@ const COMPLEXITY_LEVELS = ["Basic", "Intermediate", "Advanced"];
 export default function PromptStudio() {
   const { promptData, setPromptData } = usePrompt();
   const [prompt, setPrompt] = useState(
-    promptData ? promptData.prompt : "Create a simple electrical system with one power source, one circuit breaker, and one motor"
+    promptData ? promptData.prompt : "Create a simple electrical system with two power source, two circuit breaker, and four motor"
   );
   const [selectedIndustry, setSelectedIndustry] = useState(promptData ? promptData.industry : "Power Systems");
   const [selectedComplexity, setSelectedComplexity] = useState(promptData ? promptData.complexity : "Basic");
-  const [analysis, setAnalysis] = useState<AIAnalysis | null>(
-    promptData
-      ? {
-          intent: promptData.intent,
-          category: promptData.category,
-          confidence: promptData.confidence,
-          components: promptData.components,
-          complexity: promptData.complexity,
-          estimatedTime: promptData.estimatedTime,
-        }
-      : null
-  );
+  const [analysis, setAnalysis] = useState<AIAnalysis | null>(() => {
+    const initialPrompt = promptData ? promptData.prompt : "Create a simple electrical system with two power source, two circuit breaker, and four motor";
+    const initialIndustry = promptData ? promptData.industry : "Power Systems";
+    const initialComplexity = promptData ? promptData.complexity : "Basic";
+    const res = analyzePrompt(initialPrompt, initialIndustry, initialComplexity);
+    return {
+      intent: res.intent,
+      category: res.category,
+      confidence: res.confidence,
+      components: res.components,
+      complexity: initialComplexity,
+      estimatedTime: res.estimatedTime,
+    };
+  });
   const [isAnalyzing, setIsAnalyzing] = useState(false);
 
   const runAnalysis = (pText: string, pIndustry: string, pComplexity: string) => {
     if (!pText.trim()) return;
 
-    setIsAnalyzing(true);
+    const result = analyzePrompt(pText, pIndustry, pComplexity);
 
-    setTimeout(() => {
-      const result = analyzePrompt(pText, pIndustry, pComplexity);
+    const newAnalysis: AIAnalysis = {
+      intent: result.intent,
+      category: result.category,
+      confidence: result.confidence,
+      components: result.components,
+      complexity: pComplexity,
+      estimatedTime: result.estimatedTime,
+    };
 
-      const newAnalysis: AIAnalysis = {
-        intent: result.intent,
-        category: result.category,
-        confidence: result.confidence,
-        components: result.components,
-        complexity: pComplexity,
-        estimatedTime: result.estimatedTime,
-      };
+    setAnalysis(newAnalysis);
 
-      setAnalysis(newAnalysis);
+    setPromptData({
+      prompt: pText,
+      industry: pIndustry,
+      complexity: pComplexity,
+      intent: result.intent,
+      category: result.category,
+      confidence: result.confidence,
+      components: result.components,
+      estimatedTime: result.estimatedTime,
+      timestamp: new Date().toISOString(),
+    });
+  };
 
-      setPromptData({
-        prompt: pText,
-        industry: pIndustry,
-        complexity: pComplexity,
-        intent: result.intent,
-        category: result.category,
-        confidence: result.confidence,
-        components: result.components,
-        estimatedTime: result.estimatedTime,
-        timestamp: new Date().toISOString(),
-      });
-
-      setIsAnalyzing(false);
-    }, 300);
+  const handlePromptChange = (val: string) => {
+    setPrompt(val);
+    runAnalysis(val, selectedIndustry, selectedComplexity);
   };
 
   const handleAnalyzeClick = () => {
+    setIsAnalyzing(true);
     runAnalysis(prompt, selectedIndustry, selectedComplexity);
+    setTimeout(() => {
+      setIsAnalyzing(false);
+    }, 200);
   };
 
   const handleIndustrySelect = (industry: string) => {
@@ -129,8 +134,8 @@ export default function PromptStudio() {
                 <label className="block text-sm font-medium mb-2">Your Prompt</label>
                 <Textarea
                   value={prompt}
-                  onChange={(e) => setPrompt(e.target.value)}
-                  placeholder="Describe your industrial system, e.g., 'Create a simple electrical system with one power source, one circuit breaker, and one motor'"
+                  onChange={(e) => handlePromptChange(e.target.value)}
+                  placeholder="Describe your industrial system, e.g., 'Create a simple electrical system with two power source, two circuit breaker, and four motor'"
                   className="border-2 border-border bg-background text-foreground min-h-24 resize-none"
                 />
               </div>

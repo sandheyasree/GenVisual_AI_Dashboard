@@ -85,9 +85,9 @@ export interface MaintenanceItem {
   nextMaintenance: string;
 }
 
-function parseNumberWord(text: string, defaultVal: number = 1): number {
-  const map: Record<string, number> = {
-    one: 1, a: 1, an: 1, single: 1,
+export function parseQuantity(prompt: string, targetKeywords: string[], defaultQty: number = 1): number {
+  const numMap: Record<string, number> = {
+    one: 1, single: 1,
     two: 2, double: 2, pair: 2,
     three: 3, triple: 3,
     four: 4,
@@ -98,20 +98,39 @@ function parseNumberWord(text: string, defaultVal: number = 1): number {
     nine: 9,
     ten: 10
   };
-  const lower = text.toLowerCase().trim();
-  if (/^\d+$/.test(lower)) return parseInt(lower, 10);
-  return map[lower] !== undefined ? map[lower] : defaultVal;
-}
 
-export function parseQuantity(prompt: string, targetKeywords: string[], defaultQty: number = 1): number {
+  const numberWordKeys = Object.keys(numMap).join("|");
   const keywordsPattern = targetKeywords.join("|");
-  const regex = new RegExp(`(?:(\\d+)|(one|two|three|four|five|six|seven|eight|nine|ten|single|a|an))\\s*(?:\\w+\\s+)*(?:${keywordsPattern})`, "i");
-  const match = prompt.match(regex);
-  if (match) {
-    if (match[1]) return parseInt(match[1], 10);
-    if (match[2]) return parseNumberWord(match[2], defaultQty);
+
+  // Regex looking specifically for numbers or number words within 0 to 2 words BEFORE the keyword
+  const regex = new RegExp(`\\b(?:(\\d+)|(${numberWordKeys}))\\s+(?:[a-z0-9\\-]+\\s+){0,2}(?:${keywordsPattern})\\b`, "gi");
+
+  let match;
+  let highestQty = 0;
+
+  while ((match = regex.exec(prompt)) !== null) {
+    let val = defaultQty;
+    if (match[1]) {
+      val = parseInt(match[1], 10);
+    } else if (match[2]) {
+      val = numMap[match[2].toLowerCase()] || defaultQty;
+    }
+    if (val > highestQty) {
+      highestQty = val;
+    }
   }
-  return defaultQty;
+
+  if (highestQty > 0) return highestQty;
+
+  // Fallback 1: Direct "a" or "an" preceding keyword (within 1 word)
+  const singleArticleRegex = new RegExp(`\\b(?:a|an)\\s+(?:[a-z0-9\\-]+\\s+){0,1}(?:${keywordsPattern})\\b`, "gi");
+  if (singleArticleRegex.test(prompt)) {
+    return 1;
+  }
+
+  // Fallback 2: Check if keyword itself exists in the prompt
+  const keywordPresent = new RegExp(`\\b(?:${keywordsPattern})\\b`, "i").test(prompt);
+  return keywordPresent ? defaultQty : 0;
 }
 
 export function parsePromptRequirements(prompt: string, industry: string, complexity: string): ParsedRequirements {
@@ -122,18 +141,17 @@ export function parsePromptRequirements(prompt: string, industry: string, comple
   const isRobot = p.includes("robot") || p.includes("robotic");
   const isSubstation = p.includes("substation") || p.includes("transformer") || industry === "Power Systems";
 
-  // Check if explicit motor mentions exist
-  const hasMotorMention = /motor|motors|m\d|drive|drives|fan|engine/.test(p);
+  const hasMotorMention = /\bmotors?\b|\bm\d\b|\bdrives?\b|\bfans?\b|\bengines?\b/i.test(p);
   const defaultMotorQty = hasMotorMention ? 1 : (isConveyor ? 2 : (isPump ? 0 : (industry === "Process Industry" ? 0 : 1)));
 
-  const powerSources = parseQuantity(prompt, ["power source", "power supply", "ac power", "grid", "feeder"], 1);
-  const breakers = parseQuantity(prompt, ["circuit breaker", "breaker", "cb", "mcb", "mccb"], 1);
-  const motors = parseQuantity(prompt, ["motor", "motors", "drive motor"], defaultMotorQty);
-  const pumps = parseQuantity(prompt, ["pump", "pumps"], isPump ? 1 : 0);
-  const transformers = parseQuantity(prompt, ["transformer", "transformers"], isSubstation ? 1 : 0);
-  const vfds = parseQuantity(prompt, ["vfd", "variable frequency drive", "inverter", "drive"], (motors > 0 && complexity !== "Basic") ? 1 : 0);
-  const sensors = parseQuantity(prompt, ["sensor", "sensors", "transducer", "detector"], complexity === "Advanced" ? 4 : (complexity === "Intermediate" ? 2 : 1));
-  const valves = parseQuantity(prompt, ["valve", "valves", "solenoid"], isPump ? 2 : 0);
+  const powerSources = parseQuantity(prompt, ["power sources?", "power supplies?", "ac power", "grids?", "feeders?"], 1);
+  const breakers = parseQuantity(prompt, ["circuit breakers?", "breakers?", "cbs?", "mcbs?", "mccbs?"], 1);
+  const motors = parseQuantity(prompt, ["motors?", "drives?", "engines?"], defaultMotorQty);
+  const pumps = parseQuantity(prompt, ["pumps?"], isPump ? 1 : 0);
+  const transformers = parseQuantity(prompt, ["transformers?"], isSubstation ? 1 : 0);
+  const vfds = parseQuantity(prompt, ["vfds?", "variable frequency drives?", "inverters?"], (motors > 0 && complexity !== "Basic") ? 1 : 0);
+  const sensors = parseQuantity(prompt, ["sensors?", "transducers?", "detectors?"], complexity === "Advanced" ? 4 : (complexity === "Intermediate" ? 2 : 1));
+  const valves = parseQuantity(prompt, ["valves?", "solenoids?"], isPump ? 2 : 0);
 
   const hasPLC = p.includes("plc") || complexity !== "Basic";
   const hasHMI = p.includes("hmi") || p.includes("display") || p.includes("screen") || complexity !== "Basic";
@@ -187,7 +205,7 @@ export function analyzePrompt(prompt: string, industry: string, complexity: stri
   const components: string[] = [];
   if (reqs.powerSources > 0) components.push(`${reqs.powerSources}x Power Source (AC 415V/230V)`);
   if (reqs.transformers > 0) components.push(`${reqs.transformers}x Power Transformer`);
-  if (reqs.breakers > 0) components.push(`${reqs.breakers}x Circuit Breaker (CB1)`);
+  if (reqs.breakers > 0) components.push(`${reqs.breakers}x Circuit Breaker (CB1..CB${reqs.breakers})`);
   if (reqs.vfds > 0) components.push(`${reqs.vfds}x Variable Frequency Drive (VFD)`);
   if (reqs.motors > 0) components.push(`${reqs.motors}x AC Induction Motor (M1..M${reqs.motors})`);
   if (reqs.pumps > 0) components.push(`${reqs.pumps}x Centrifugal Pump (P1..P${reqs.pumps})`);
@@ -229,7 +247,7 @@ export function generateSchematicContent(promptData: PromptData): SchematicConte
   if (reqs.hasHMI) components.push("1x Human Machine Interface (HMI Screen)");
   if (reqs.hasEStop) components.push("1x Emergency Stop Pushbutton Circuit");
 
-  connections.push(`Power Source → Circuit Breaker (${reqs.breakers}x)`);
+  connections.push(`Power Source (${reqs.powerSources}x) → Circuit Breaker (${reqs.breakers}x)`);
   if (reqs.transformers > 0) connections.push("Grid Power → Step-Down Transformer → Main Switchgear");
   if (reqs.vfds > 0) connections.push("Circuit Breaker → VFD Drive → Motor Feeders");
   else if (reqs.motors > 0) connections.push("Circuit Breaker → Motor Starter → Motor Feeders");
@@ -258,7 +276,7 @@ export function generateIllustrationContent(promptData: PromptData): Illustratio
   const title = `${promptData.industry} Layout (${promptData.complexity})`;
   const keyFeatures = [
     `Custom architecture tailored for ${promptData.industry}`,
-    `Includes ${reqs.motors > 0 ? `${reqs.motors} motor(s)` : ''}${reqs.pumps > 0 ? `${reqs.pumps} pump(s)` : ''} & ${reqs.breakers} breaker(s)`,
+    `Includes ${reqs.powerSources} power source(s), ${reqs.breakers} breaker(s)${reqs.motors > 0 ? `, & ${reqs.motors} motor(s)` : ''}${reqs.pumps > 0 ? `, & ${reqs.pumps} pump(s)` : ''}`,
     reqs.hasPLC ? "Centralized PLC automation & monitoring" : "Direct hardwired relay logic control",
     reqs.hasHMI ? "Interactive HMI touchscreen interface" : "Local push-button control station",
     reqs.hasEStop ? "Safety-rated emergency stop integration" : "Standard circuit protection",
@@ -320,7 +338,7 @@ export function generatePLCArchitecture(promptData: PromptData): PLCArchitecture
     powerSupply: isAdv ? "24 VDC, 20A Redundant Power Supply" : "24 VDC, 5A Power Supply",
     notes: [
       `Optimized for ${promptData.industry} requirements`,
-      `Configured for ${reqs.motors} motor(s) & ${reqs.breakers} breaker(s)`,
+      `Configured for ${reqs.powerSources} power source(s), ${reqs.breakers} breaker(s) & ${reqs.motors} motor(s)`,
       reqs.hasEStop ? "Integrated Fail-Safe Safety Circuit" : "Basic Overload Trip Protection",
     ],
   };
@@ -332,7 +350,6 @@ export function generateBOMComponents(promptData: PromptData): BOMComponent[] {
 
   const multiplier = promptData.complexity === "Advanced" ? 1.5 : promptData.complexity === "Intermediate" ? 1.2 : 1.0;
 
-  // Power Source / Main Transformer
   if (reqs.transformers > 0) {
     items.push({
       name: "Transformer",
@@ -345,18 +362,18 @@ export function generateBOMComponents(promptData: PromptData): BOMComponent[] {
     });
   }
 
-  // Power Supply
-  items.push({
-    name: "Power Supply",
-    category: "Power Distribution",
-    model: "MeanWell 24VDC DIN Rail PSU",
-    specs: "24V DC, 10A, 240W",
-    qty: reqs.powerSources,
-    unitPrice: Math.round(3500 * multiplier),
-    totalPrice: Math.round(3500 * multiplier * reqs.powerSources),
-  });
+  for (let i = 1; i <= reqs.powerSources; i++) {
+    items.push({
+      name: `Power Source (AC${i})`,
+      category: "Power Distribution",
+      model: "415V 3-Phase Mains Grid Feed",
+      specs: "24V DC, 10A DIN Rail PSU",
+      qty: 1,
+      unitPrice: Math.round(4500 * multiplier),
+      totalPrice: Math.round(4500 * multiplier),
+    });
+  }
 
-  // Circuit Breakers
   for (let i = 1; i <= reqs.breakers; i++) {
     items.push({
       name: `Circuit Breaker (CB${i})`,
@@ -369,7 +386,6 @@ export function generateBOMComponents(promptData: PromptData): BOMComponent[] {
     });
   }
 
-  // VFDs
   for (let i = 1; i <= reqs.vfds; i++) {
     items.push({
       name: `VFD Drive (VFD${i})`,
@@ -382,7 +398,6 @@ export function generateBOMComponents(promptData: PromptData): BOMComponent[] {
     });
   }
 
-  // Motors
   for (let i = 1; i <= reqs.motors; i++) {
     items.push({
       name: `Motor (M${i})`,
@@ -395,7 +410,6 @@ export function generateBOMComponents(promptData: PromptData): BOMComponent[] {
     });
   }
 
-  // Pumps
   for (let i = 1; i <= reqs.pumps; i++) {
     items.push({
       name: `Pump (P${i})`,
@@ -408,7 +422,6 @@ export function generateBOMComponents(promptData: PromptData): BOMComponent[] {
     });
   }
 
-  // Solenoid Valves
   for (let i = 1; i <= reqs.valves; i++) {
     items.push({
       name: `Solenoid Valve (V${i})`,
@@ -421,7 +434,6 @@ export function generateBOMComponents(promptData: PromptData): BOMComponent[] {
     });
   }
 
-  // PLC
   if (reqs.hasPLC) {
     items.push({
       name: "PLC Controller",
@@ -434,7 +446,6 @@ export function generateBOMComponents(promptData: PromptData): BOMComponent[] {
     });
   }
 
-  // HMI
   if (reqs.hasHMI) {
     items.push({
       name: "HMI Touch Screen",
@@ -447,7 +458,6 @@ export function generateBOMComponents(promptData: PromptData): BOMComponent[] {
     });
   }
 
-  // Emergency Stop
   if (reqs.hasEStop) {
     items.push({
       name: "Emergency Stop Button",
@@ -460,7 +470,6 @@ export function generateBOMComponents(promptData: PromptData): BOMComponent[] {
     });
   }
 
-  // Sensors
   items.push({
     name: "Industrial Sensors",
     category: "Sensors & Feedback",
@@ -499,7 +508,7 @@ export function generateSafetyChecks(promptData: PromptData): SafetyCheckItem[] 
     {
       name: "Circuit Breaker Interrupt Capacity",
       status: "pass",
-      description: `Breaker short-circuit current rating exceeds max prospective fault current`,
+      description: `Breaker short-circuit current rating exceeds max prospective fault current across ${reqs.breakers} breaker(s)`,
     },
     {
       name: "Control Loop Isolation & VFD Surge",
@@ -535,7 +544,6 @@ export function generateCostBreakdown(promptData: PromptData): CostItem[] {
     cost,
   }));
 
-  // Wiring & Panel Fabrication (20% of equipment cost)
   const equipmentTotal = bom.reduce((sum, item) => sum + item.totalPrice, 0);
   const wiringCost = Math.round(equipmentTotal * 0.18);
   const testingCost = Math.round(equipmentTotal * 0.08);
@@ -599,6 +607,24 @@ export function generateMaintenancePredictions(promptData: PromptData): Maintena
   const reqs = parsePromptRequirements(promptData.prompt, promptData.industry, promptData.complexity);
   const predictions: MaintenanceItem[] = [];
 
+  for (let i = 1; i <= reqs.powerSources; i++) {
+    predictions.push({
+      component: `Power Source AC${i}`,
+      health: 98,
+      status: "Excellent",
+      nextMaintenance: "18 months - Isolation resistance test",
+    });
+  }
+
+  for (let i = 1; i <= reqs.breakers; i++) {
+    predictions.push({
+      component: `Circuit Breaker CB${i}`,
+      health: 96,
+      status: "Excellent",
+      nextMaintenance: "12 months - Thermal imaging audit",
+    });
+  }
+
   for (let i = 1; i <= reqs.motors; i++) {
     predictions.push({
       component: `Motor M${i}`,
@@ -623,24 +649,6 @@ export function generateMaintenancePredictions(promptData: PromptData): Maintena
       health: 99,
       status: "Excellent",
       nextMaintenance: "24 months - Firmware update & battery check",
-    });
-  }
-
-  for (let i = 1; i <= reqs.vfds; i++) {
-    predictions.push({
-      component: `VFD Unit ${i}`,
-      health: 86,
-      status: "Fair",
-      nextMaintenance: "3 months - Dust filter clean & capacitor check",
-    });
-  }
-
-  if (predictions.length === 0) {
-    predictions.push({
-      component: "Circuit Breaker CB1",
-      health: 98,
-      status: "Excellent",
-      nextMaintenance: "18 months - Trip test",
     });
   }
 
