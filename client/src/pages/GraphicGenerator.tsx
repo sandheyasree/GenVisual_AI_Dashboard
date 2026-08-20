@@ -4,7 +4,12 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Download, Share2, AlertCircle } from "lucide-react";
 import { usePrompt } from "@/contexts/PromptContext";
-import { generateSchematicContent, generateIllustrationContent, generateSVGSchematic, generatePLCArchitecture } from "@/lib/promptAnalyzer";
+import {
+  generateSchematicContent,
+  generateIllustrationContent,
+  generatePLCArchitecture,
+  parsePromptRequirements,
+} from "@/lib/promptAnalyzer";
 
 export default function GraphicGenerator() {
   const [activeTab, setActiveTab] = useState("diagram");
@@ -27,89 +32,201 @@ export default function GraphicGenerator() {
     );
   }
 
+  const reqs = parsePromptRequirements(promptData.prompt, promptData.industry, promptData.complexity);
   const schematicContent = generateSchematicContent(promptData);
   const illustrationContent = generateIllustrationContent(promptData);
   const plcArchitecture = generatePLCArchitecture(promptData);
 
-  const motorCount = promptData
-    ? (() => {
-        const match = promptData.prompt.toLowerCase().match(/(\d+)\s*(?:motor|motors|m\d)/);
-        return match ? parseInt(match[1]) : 3;
-      })()
-    : 3;
-
   const DiagramMockup = () => {
-    const totalWidth = Math.max(700, 350 + motorCount * 140);
+    // Generate power/process flow line nodes dynamically based on prompt
+    const mainNodes: Array<{ id: string; label: string; type: "source" | "transformer" | "breaker" | "vfd" | "motor" | "pump" | "valve" }> = [];
+
+    for (let i = 1; i <= reqs.powerSources; i++) {
+      mainNodes.push({ id: `source_${i}`, label: reqs.powerSources > 1 ? `AC${i}` : "AC", type: "source" });
+    }
+    for (let i = 1; i <= reqs.transformers; i++) {
+      mainNodes.push({ id: `tr_${i}`, label: `TR${i}`, type: "transformer" });
+    }
+    for (let i = 1; i <= reqs.breakers; i++) {
+      mainNodes.push({ id: `cb_${i}`, label: `CB${i}`, type: "breaker" });
+    }
+    for (let i = 1; i <= reqs.vfds; i++) {
+      mainNodes.push({ id: `vfd_${i}`, label: `VFD${i}`, type: "vfd" });
+    }
+    for (let i = 1; i <= reqs.motors; i++) {
+      mainNodes.push({ id: `m_${i}`, label: `M${i}`, type: "motor" });
+    }
+    for (let i = 1; i <= reqs.pumps; i++) {
+      mainNodes.push({ id: `p_${i}`, label: `P${i}`, type: "pump" });
+    }
+    for (let i = 1; i <= reqs.valves; i++) {
+      mainNodes.push({ id: `v_${i}`, label: `V${i}`, type: "valve" });
+    }
+
+    const startX = 80;
+    const spacing = Math.max(120, Math.min(180, 800 / Math.max(3, mainNodes.length)));
+    const totalWidth = Math.max(700, startX * 2 + mainNodes.length * spacing);
+
+    return (
+      <div className="bg-background border-2 border-border p-8 min-h-96">
+        <div className="mb-4 pb-4 border-b-2 border-border flex items-center justify-between">
+          <div>
+            <p className="text-xs font-bold text-muted-foreground mb-1">BASED ON PROMPT</p>
+            <p className="text-sm font-medium line-clamp-2">{promptData.prompt}</p>
+          </div>
+          <div className="flex gap-2">
+            <span className="px-2 py-1 bg-primary/10 border border-primary text-xs font-bold">{promptData.industry}</span>
+            <span className="px-2 py-1 bg-primary/10 border border-primary text-xs font-bold">{promptData.complexity} Tier</span>
+          </div>
+        </div>
+
+        <svg viewBox={`0 0 ${totalWidth} 360`} className="w-full h-auto">
+          {/* Main Bus Line */}
+          {mainNodes.length > 1 && (
+            <line
+              x1={startX}
+              y1="100"
+              x2={startX + (mainNodes.length - 1) * spacing}
+              y2="100"
+              stroke="#1a1a1a"
+              strokeWidth="2"
+            />
+          )}
+
+          {/* Main Line Nodes */}
+          {mainNodes.map((node, idx) => {
+            const cx = startX + idx * spacing;
+            return (
+              <g key={node.id}>
+                {node.type === "source" && (
+                  <>
+                    <circle cx={cx} cy="100" r="28" fill="#ffffff" stroke="#1a1a1a" strokeWidth="2" />
+                    <text x={cx} y="104" textAnchor="middle" fontSize="11" fontWeight="bold">
+                      {node.label}
+                    </text>
+                  </>
+                )}
+                {node.type === "transformer" && (
+                  <>
+                    <circle cx={cx - 10} cy="100" r="18" fill="none" stroke="#1a1a1a" strokeWidth="2" />
+                    <circle cx={cx + 10} cy="100" r="18" fill="none" stroke="#1a1a1a" strokeWidth="2" />
+                    <text x={cx} y="132" textAnchor="middle" fontSize="10" fontWeight="bold">
+                      {node.label}
+                    </text>
+                  </>
+                )}
+                {node.type === "breaker" && (
+                  <>
+                    <rect x={cx - 28} y="80" width="56" height="40" fill="#ffffff" stroke="#1a1a1a" strokeWidth="2" />
+                    <text x={cx} y="104" textAnchor="middle" fontSize="10" fontWeight="bold">
+                      {node.label}
+                    </text>
+                  </>
+                )}
+                {node.type === "vfd" && (
+                  <>
+                    <rect x={cx - 28} y="80" width="56" height="40" fill="#ffffff" stroke="#1a1a1a" strokeWidth="2" />
+                    <text x={cx} y="104" textAnchor="middle" fontSize="9" fontWeight="bold">
+                      {node.label}
+                    </text>
+                  </>
+                )}
+                {(node.type === "motor" || node.type === "pump") && (
+                  <>
+                    <circle cx={cx} cy="100" r="25" fill="#ffffff" stroke="#e63946" strokeWidth="2.5" />
+                    <text x={cx} y="104" textAnchor="middle" fontSize="11" fontWeight="bold" fill="#e63946">
+                      {node.label}
+                    </text>
+                  </>
+                )}
+                {node.type === "valve" && (
+                  <>
+                    <polygon points={`${cx - 20},85 ${cx + 20},115 ${cx - 20},115 ${cx + 20},85`} fill="#ffffff" stroke="#1a1a1a" strokeWidth="2" />
+                    <text x={cx} y="132" textAnchor="middle" fontSize="10" fontWeight="bold">
+                      {node.label}
+                    </text>
+                  </>
+                )}
+              </g>
+            );
+          })}
+
+          {/* Control Section (PLC, HMI, E-Stop) */}
+          {reqs.hasPLC && (
+            <g>
+              <rect x={startX + 60} y="220" width="90" height="50" fill="#ffffff" stroke="#1a1a1a" strokeWidth="2" />
+              <text x={startX + 105} y="250" textAnchor="middle" fontSize="11" fontWeight="bold">
+                PLC
+              </text>
+              <line x1={startX + 105} y1="220" x2={startX + 105} y2="128" stroke="#666666" strokeWidth="1" strokeDasharray="4,4" />
+            </g>
+          )}
+
+          {reqs.hasHMI && (
+            <g>
+              <rect x={startX + 220} y="220" width="90" height="50" fill="#ffffff" stroke="#1a1a1a" strokeWidth="2" />
+              <text x={startX + 265} y="250" textAnchor="middle" fontSize="11" fontWeight="bold">
+                HMI
+              </text>
+              <line x1={startX + 265} y1="220" x2={startX + 265} y2="128" stroke="#666666" strokeWidth="1" strokeDasharray="4,4" />
+            </g>
+          )}
+
+          {reqs.hasEStop && (
+            <g>
+              <circle cx={startX + 380} cy="245" r="22" fill="#ffffff" stroke="#e63946" strokeWidth="2" />
+              <text x={startX + 380} y="249" textAnchor="middle" fontSize="9" fontWeight="bold" fill="#e63946">
+                E-STOP
+              </text>
+              <line x1={startX + 380} y1="223" x2={startX + 380} y2="128" stroke="#e63946" strokeWidth="1" strokeDasharray="4,4" />
+            </g>
+          )}
+        </svg>
+      </div>
+    );
+  };
+
+  const UILayoutMockup = () => {
+    const itemCount = Math.max(1, reqs.motors + reqs.pumps);
     return (
       <div className="bg-background border-2 border-border p-8 min-h-96">
         <div className="mb-4 pb-4 border-b-2 border-border">
           <p className="text-xs font-bold text-muted-foreground mb-1">BASED ON PROMPT</p>
           <p className="text-sm font-medium line-clamp-2">{promptData.prompt}</p>
         </div>
-        <svg viewBox={`0 0 ${totalWidth} 400`} className="w-full h-auto">
-          <circle cx="100" cy="100" r="30" fill="none" stroke="#1a1a1a" strokeWidth="2" />
-          <text x="100" y="105" textAnchor="middle" fontSize="12" fontWeight="bold">AC</text>
-          <rect x="200" y="80" width="60" height="40" fill="none" stroke="#1a1a1a" strokeWidth="2" />
-          <text x="230" y="105" textAnchor="middle" fontSize="10" fontWeight="bold">CB1</text>
-          <line x1="130" y1="100" x2="200" y2="100" stroke="#1a1a1a" strokeWidth="2" />
-          <line x1="260" y1="100" x2="325" y2="100" stroke="#1a1a1a" strokeWidth="2" />
-
-          {Array.from({ length: motorCount }).map((_, idx) => {
-            const cx = 350 + idx * 140;
-            const isLast = idx === motorCount - 1;
-            return (
-              <g key={idx}>
-                <circle cx={cx} cy="100" r="25" fill="none" stroke="#e63946" strokeWidth="2" />
-                <text x={cx} y="105" textAnchor="middle" fontSize="10" fontWeight="bold" fill="#e63946">
-                  M{idx + 1}
-                </text>
-                {!isLast && (
-                  <line x1={cx + 25} y1="100" x2={cx + 140 - 25} y2="100" stroke="#1a1a1a" strokeWidth="2" />
-                )}
-              </g>
-            );
-          })}
-
-          <rect x="200" y="200" width="80" height="60" fill="none" stroke="#1a1a1a" strokeWidth="2" />
-          <text x="240" y="235" textAnchor="middle" fontSize="11" fontWeight="bold">PLC</text>
-          <rect x="400" y="200" width="80" height="60" fill="none" stroke="#1a1a1a" strokeWidth="2" />
-          <text x="440" y="235" textAnchor="middle" fontSize="11" fontWeight="bold">HMI</text>
-          <circle cx="600" cy="230" r="20" fill="none" stroke="#e63946" strokeWidth="2" />
-          <text x="600" y="235" textAnchor="middle" fontSize="9" fontWeight="bold" fill="#e63946">E-STOP</text>
-          <line x1="240" y1="200" x2="240" y2="150" stroke="#1a1a1a" strokeWidth="1" strokeDasharray="5,5" />
-          <line x1="440" y1="200" x2="440" y2="150" stroke="#1a1a1a" strokeWidth="1" strokeDasharray="5,5" />
-        </svg>
-      </div>
-    );
-  };
-
-  const UILayoutMockup = () => (
-    <div className="bg-background border-2 border-border p-8 min-h-96">
-      <div className="mb-4 pb-4 border-b-2 border-border">
-        <p className="text-xs font-bold text-muted-foreground mb-1">BASED ON PROMPT</p>
-        <p className="text-sm font-medium line-clamp-2">{promptData.prompt}</p>
-      </div>
-      <div className="bg-card border-2 border-border p-6 max-w-md">
-        <h3 className="text-lg font-bold mb-4 border-b-2 border-border pb-2">HMI Dashboard</h3>
-        <div className="space-y-3">
-          {Array.from({ length: motorCount }).map((_, idx) => (
-            <div key={idx} className="flex items-center justify-between p-2 border-2 border-border">
-              <span className="text-sm font-bold">Motor {idx + 1} Status</span>
-              <div className={`w-3 h-3 ${idx < 2 ? "bg-primary" : "bg-muted"} rounded-full`}></div>
+        <div className="bg-card border-2 border-border p-6 max-w-md">
+          <h3 className="text-lg font-bold mb-4 border-b-2 border-border pb-2 flex items-center justify-between">
+            <span>HMI Dashboard</span>
+            <span className="text-xs text-muted-foreground font-normal">{promptData.industry}</span>
+          </h3>
+          <div className="space-y-3">
+            {Array.from({ length: itemCount }).map((_, idx) => (
+              <div key={idx} className="flex items-center justify-between p-2 border-2 border-border">
+                <span className="text-sm font-bold">
+                  {reqs.pumps > 0 ? `Pump P${idx + 1}` : `Motor M${idx + 1}`} Status
+                </span>
+                <div className={`w-3 h-3 ${idx === 0 ? "bg-primary" : "bg-muted"} rounded-full`}></div>
+              </div>
+            ))}
+            {reqs.hasEStop && (
+              <div className="flex items-center justify-between p-2 border-2 border-red-500 bg-red-50 dark:bg-red-950/20">
+                <span className="text-sm font-bold text-red-600">E-STOP Status</span>
+                <span className="text-xs font-bold text-green-600">READY</span>
+              </div>
+            )}
+            <div className="grid grid-cols-2 gap-2 pt-4 border-t-2 border-border">
+              <button className="px-3 py-2 bg-primary text-primary-foreground border-2 border-primary font-bold text-sm">
+                START
+              </button>
+              <button className="px-3 py-2 bg-card border-2 border-border text-foreground font-bold text-sm">
+                STOP
+              </button>
             </div>
-          ))}
-          <div className="grid grid-cols-2 gap-2 pt-4 border-t-2 border-border">
-            <button className="px-3 py-2 bg-primary text-primary-foreground border-2 border-primary font-bold text-sm">
-              START
-            </button>
-            <button className="px-3 py-2 bg-card border-2 border-border text-foreground font-bold text-sm">
-              STOP
-            </button>
           </div>
         </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   const SchematicMockup = () => (
     <div className="bg-background border-2 border-border p-8 min-h-96">
@@ -119,7 +236,7 @@ export default function GraphicGenerator() {
       </div>
       <div className="mb-6">
         <h3 className="text-lg font-bold mb-3">{schematicContent.title}</h3>
-        <div className="grid grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
             <p className="text-xs font-bold text-muted-foreground mb-2">COMPONENTS</p>
             <ul className="space-y-1 text-sm">
@@ -163,7 +280,9 @@ export default function GraphicGenerator() {
       </div>
       <div className="flex-1 flex flex-col items-center justify-center">
         <div className="w-40 h-40 bg-primary/10 border-2 border-primary mb-6 flex items-center justify-center">
-          <div className="text-6xl">🏭</div>
+          <div className="text-6xl">
+            {promptData.industry === "Power Systems" ? "⚡" : promptData.industry === "Process Industry" ? "💧" : promptData.industry === "Manufacturing" ? "🏭" : "🤖"}
+          </div>
         </div>
         <h3 className="text-xl font-bold mb-2 text-center">{illustrationContent.title}</h3>
         <p className="text-sm text-muted-foreground text-center mb-6">
@@ -192,7 +311,7 @@ export default function GraphicGenerator() {
       </div>
       <div className="flex-1">
         <h3 className="text-lg font-bold mb-4">{plcArchitecture.title}</h3>
-        <div className="grid grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
             <p className="text-xs font-bold text-muted-foreground mb-2">CPU MODULE</p>
             <p className="text-sm bg-primary/10 border-2 border-primary p-2 mb-4 font-medium">{plcArchitecture.cpuModule}</p>
@@ -229,7 +348,7 @@ export default function GraphicGenerator() {
         </div>
       </div>
       <div className="pt-4 border-t-2 border-border mt-4">
-        <div className="grid grid-cols-4 gap-4 text-center mb-4">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center mb-4">
           <div className="bg-card border-2 border-border p-2">
             <p className="text-xs text-muted-foreground">Memory</p>
             <p className="text-sm font-bold">{plcArchitecture.memorySize}</p>
@@ -267,13 +386,16 @@ export default function GraphicGenerator() {
           </p>
           <div className="flex flex-wrap gap-2 text-xs">
             <span className="px-2 py-1 bg-primary/10 border-2 border-primary text-foreground font-medium">
-              {promptData.category}
+              Industry: {promptData.industry}
+            </span>
+            <span className="px-2 py-1 bg-primary/10 border-2 border-primary text-foreground font-medium">
+              Category: {promptData.category}
+            </span>
+            <span className="px-2 py-1 bg-primary/10 border-2 border-primary text-foreground font-medium">
+              Complexity: {promptData.complexity}
             </span>
             <span className="px-2 py-1 bg-primary/10 border-2 border-primary text-foreground font-medium">
               Confidence: {promptData.confidence}%
-            </span>
-            <span className="px-2 py-1 bg-primary/10 border-2 border-primary text-foreground font-medium">
-              {promptData.complexity}
             </span>
           </div>
         </div>
@@ -301,8 +423,8 @@ export default function GraphicGenerator() {
             <Card className="border-2 border-border bg-card p-6">
               <div className="flex items-center justify-between mb-4">
                 <div>
-                  <h3 className="text-lg font-bold">Single Line Diagram (SLD)</h3>
-                  <p className="text-sm text-muted-foreground">Power distribution and motor connections</p>
+                  <h3 className="text-lg font-bold">{promptData.category}</h3>
+                  <p className="text-sm text-muted-foreground">Power & component topology diagram</p>
                 </div>
                 <div className="flex gap-2">
                   <Button variant="outline" size="sm" className="border-2 border-border">

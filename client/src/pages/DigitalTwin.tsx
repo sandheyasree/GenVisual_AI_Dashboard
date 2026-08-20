@@ -1,48 +1,49 @@
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Play, Pause, Square, AlertCircle, Zap } from "lucide-react";
-import { useState, useMemo } from "react";
+import { Play, Pause, Square, AlertCircle } from "lucide-react";
+import { useState, useEffect } from "react";
 import { usePrompt } from "@/contexts/PromptContext";
+import { parsePromptRequirements } from "@/lib/promptAnalyzer";
 
 export default function DigitalTwin() {
-  const [isRunning, setIsRunning] = useState(false);
-  const [motorSpeeds, setMotorSpeeds] = useState<number[]>([]);
   const { promptData } = usePrompt();
+  const [isRunning, setIsRunning] = useState(false);
+  const [speeds, setSpeeds] = useState<number[]>([]);
 
-  // Parse motor count from prompt
-  const motorCount = useMemo(() => {
-    if (!promptData) return 3;
-    const prompt = promptData.prompt.toLowerCase();
-    const match = prompt.match(/(\d+)\s*(?:motor|motors|m\d)/);
-    return match ? parseInt(match[1]) : 3;
-  }, [promptData]);
+  const reqs = promptData
+    ? parsePromptRequirements(promptData.prompt, promptData.industry, promptData.complexity)
+    : null;
 
-  // Initialize motor speeds
-  useMemo(() => {
-    setMotorSpeeds(Array(motorCount).fill(0));
-  }, [motorCount]);
+  const deviceCount = reqs
+    ? Math.max(1, reqs.motors > 0 ? reqs.motors : reqs.pumps > 0 ? reqs.pumps : 1)
+    : 1;
+
+  const deviceLabel = reqs && reqs.pumps > 0 && reqs.motors === 0 ? "Pump" : "Motor";
+
+  useEffect(() => {
+    setSpeeds(Array(deviceCount).fill(0));
+  }, [deviceCount]);
 
   const handleStart = () => {
     setIsRunning(true);
-    // Animate motor speeds
-    const speeds = Array(motorCount)
+    const newSpeeds = Array(deviceCount)
       .fill(0)
-      .map(() => 1500 + Math.random() * 50);
-    setMotorSpeeds(speeds);
+      .map(() => 1450 + Math.random() * 50);
+    setSpeeds(newSpeeds);
   };
 
   const handleStop = () => {
     setIsRunning(false);
-    setMotorSpeeds(Array(motorCount).fill(0));
+    setSpeeds(Array(deviceCount).fill(0));
   };
 
-  const handleMotorSpeedChange = (index: number, speed: number) => {
-    const newSpeeds = [...motorSpeeds];
-    newSpeeds[index] = speed;
-    setMotorSpeeds(newSpeeds);
+  const handleSpeedChange = (index: number, speed: number) => {
+    const next = [...speeds];
+    next[index] = speed;
+    setSpeeds(next);
   };
 
-  if (!promptData) {
+  if (!promptData || !reqs) {
     return (
       <div className="min-h-screen bg-background p-4 md:p-8">
         <div className="max-w-6xl mx-auto">
@@ -59,8 +60,8 @@ export default function DigitalTwin() {
     );
   }
 
-  const systemLoad = motorSpeeds.length > 0 
-    ? Math.round((motorSpeeds.reduce((a, b) => a + b, 0) / (motorCount * 1500)) * 100)
+  const systemLoad = speeds.length > 0
+    ? Math.round((speeds.reduce((a, b) => a + b, 0) / (deviceCount * 1500)) * 100)
     : 0;
 
   const systemHealth = isRunning ? 98 : 100;
@@ -73,100 +74,81 @@ export default function DigitalTwin() {
           Interactive simulation for: <span className="font-bold text-foreground">"{promptData.prompt}"</span>
         </p>
 
+        <div className="flex flex-wrap gap-2 mb-6 text-xs">
+          <span className="px-2 py-1 bg-primary/10 border-2 border-primary text-foreground font-medium">
+            Industry: {promptData.industry}
+          </span>
+          <span className="px-2 py-1 bg-primary/10 border-2 border-primary text-foreground font-medium">
+            Complexity: {promptData.complexity}
+          </span>
+          <span className="px-2 py-1 bg-primary/10 border-2 border-primary text-foreground font-medium">
+            Simulated Units: {deviceCount} {deviceLabel}(s)
+          </span>
+        </div>
+
         <Card className="border-2 border-border bg-card p-6 mb-6">
           {/* Simulation Visualization */}
           <div className="bg-background border-2 border-border p-8 mb-4 min-h-96">
-            <svg viewBox="0 0 1000 400" className="w-full h-auto">
+            <svg viewBox="0 0 1000 360" className="w-full h-auto">
               {/* Power Source */}
-              <circle cx="50" cy="100" r="25" fill="none" stroke="#1a1a1a" strokeWidth="2" />
-              <text x="50" y="105" textAnchor="middle" fontSize="10" fontWeight="bold">
+              <circle cx="60" cy="100" r="28" fill="none" stroke="#1a1a1a" strokeWidth="2" />
+              <text x="60" y="105" textAnchor="middle" fontSize="11" fontWeight="bold">
                 AC
               </text>
 
-              {/* Motors - Dynamic based on prompt */}
-              {Array.from({ length: motorCount }).map((_, idx) => {
-                const xPos = 150 + idx * 200;
-                const isRunning_ = isRunning && motorSpeeds[idx] > 0;
+              {/* Dynamic Units based on prompt */}
+              {Array.from({ length: deviceCount }).map((_, idx) => {
+                const spacing = Math.max(140, Math.min(220, 700 / deviceCount));
+                const xPos = 180 + idx * spacing;
+                const isUnitRunning = isRunning && (speeds[idx] || 0) > 0;
+
                 return (
                   <g key={idx}>
-                    {/* Motor Circle */}
+                    <line x1={idx === 0 ? 88 : 180 + (idx - 1) * spacing + 28} y1="100" x2={xPos - 28} y2="100" stroke="#1a1a1a" strokeWidth="2" />
                     <circle
                       cx={xPos}
                       cy="100"
-                      r="30"
-                      fill="none"
-                      stroke={isRunning_ ? "#e63946" : "#1a1a1a"}
-                      strokeWidth="2"
+                      r="28"
+                      fill="#ffffff"
+                      stroke={isUnitRunning ? "#e63946" : "#1a1a1a"}
+                      strokeWidth="2.5"
                     />
-                    {/* Rotation indicator */}
-                    {isRunning_ && (
-                      <circle
-                        cx={xPos}
-                        cy="100"
-                        r="30"
-                        fill="none"
-                        stroke="#e63946"
-                        strokeWidth="1"
-                        opacity="0.3"
-                        style={{
-                          animation: "spin 2s linear infinite",
-                        }}
-                      />
-                    )}
-                    <text x={xPos} y="105" textAnchor="middle" fontSize="12" fontWeight="bold">
-                      M{idx + 1}
+                    <text x={xPos} y="105" textAnchor="middle" fontSize="11" fontWeight="bold" fill={isUnitRunning ? "#e63946" : "#1a1a1a"}>
+                      {deviceLabel === "Pump" ? `P${idx + 1}` : `M${idx + 1}`}
                     </text>
-                    {/* Speed indicator */}
                     <text
                       x={xPos}
-                      y="150"
+                      y="148"
                       textAnchor="middle"
                       fontSize="10"
                       fontWeight="bold"
-                      fill={isRunning_ ? "#e63946" : "#666"}
+                      fill={isUnitRunning ? "#e63946" : "#666"}
                     >
-                      {Math.round(motorSpeeds[idx])} RPM
+                      {Math.round(speeds[idx] || 0)} RPM
                     </text>
                   </g>
                 );
               })}
 
-              {/* PLC */}
-              <rect x="400" y="250" width="80" height="60" fill="none" stroke="#1a1a1a" strokeWidth="2" />
-              <text x="440" y="285" textAnchor="middle" fontSize="11" fontWeight="bold">
-                PLC
-              </text>
+              {/* PLC & HMI */}
+              {reqs.hasPLC && (
+                <g>
+                  <rect x="360" y="220" width="90" height="50" fill="#ffffff" stroke="#1a1a1a" strokeWidth="2" />
+                  <text x="405" y="250" textAnchor="middle" fontSize="11" fontWeight="bold">
+                    PLC
+                  </text>
+                </g>
+              )}
 
-              {/* HMI */}
-              <rect x="700" y="250" width="80" height="60" fill="none" stroke="#1a1a1a" strokeWidth="2" />
-              <text x="740" y="285" textAnchor="middle" fontSize="11" fontWeight="bold">
-                HMI
-              </text>
-
-              {/* Connection lines */}
-              {Array.from({ length: motorCount }).map((_, idx) => {
-                const xPos = 150 + idx * 200;
-                return (
-                  <line
-                    key={`line-${idx}`}
-                    x1={xPos}
-                    y1="130"
-                    x2="440"
-                    y2="250"
-                    stroke="#1a1a1a"
-                    strokeWidth="1"
-                    strokeDasharray="5,5"
-                  />
-                );
-              })}
+              {reqs.hasHMI && (
+                <g>
+                  <rect x="560" y="220" width="90" height="50" fill="#ffffff" stroke="#1a1a1a" strokeWidth="2" />
+                  <text x="605" y="250" textAnchor="middle" fontSize="11" fontWeight="bold">
+                    HMI
+                  </text>
+                </g>
+              )}
             </svg>
-
-            <style>{`
-              @keyframes spin {
-                from { transform: rotate(0deg); }
-                to { transform: rotate(360deg); }
-              }
-            `}</style>
           </div>
 
           {/* Control Buttons */}
@@ -203,31 +185,31 @@ export default function DigitalTwin() {
               <div>
                 <p className="font-bold text-sm">Simulation Status: Running</p>
                 <p className="text-xs text-muted-foreground mt-1">
-                  All {motorCount} motors running at nominal speed. No faults detected. System health: {systemHealth}%
+                  All {deviceCount} {deviceLabel.toLowerCase()}(s) running at nominal speed. No faults detected. System health: {systemHealth}%
                 </p>
               </div>
             </div>
           )}
 
-          {/* Motor Speed Controls */}
+          {/* Speed Controls */}
           <div className="mb-6 pb-6 border-b-2 border-border">
-            <h3 className="text-lg font-bold mb-4">Motor Speed Control</h3>
+            <h3 className="text-lg font-bold mb-4">{deviceLabel} Speed Control</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {Array.from({ length: motorCount }).map((_, idx) => (
+              {Array.from({ length: deviceCount }).map((_, idx) => (
                 <Card key={idx} className="border-2 border-border bg-background p-4">
-                  <label className="block text-sm font-bold mb-2">Motor {idx + 1}</label>
+                  <label className="block text-sm font-bold mb-2">{deviceLabel} {idx + 1}</label>
                   <input
                     type="range"
                     min="0"
                     max="1500"
-                    value={motorSpeeds[idx] || 0}
-                    onChange={(e) => handleMotorSpeedChange(idx, parseInt(e.target.value))}
+                    value={speeds[idx] || 0}
+                    onChange={(e) => handleSpeedChange(idx, parseInt(e.target.value))}
                     disabled={!isRunning}
                     className="w-full h-2 bg-border border-2 border-border rounded-lg appearance-none cursor-pointer"
                   />
                   <div className="flex items-center justify-between mt-2">
                     <span className="text-xs text-muted-foreground">RPM</span>
-                    <span className="text-sm font-bold text-primary">{Math.round(motorSpeeds[idx] || 0)}</span>
+                    <span className="text-sm font-bold text-primary">{Math.round(speeds[idx] || 0)}</span>
                   </div>
                 </Card>
               ))}
@@ -237,8 +219,8 @@ export default function DigitalTwin() {
           {/* System Metrics */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <Card className="border-2 border-border bg-background p-4 text-center">
-              <p className="text-xs font-bold text-muted-foreground mb-1">Total Motors</p>
-              <p className="text-3xl font-bold text-primary">{motorCount}</p>
+              <p className="text-xs font-bold text-muted-foreground mb-1">Total {deviceLabel}s</p>
+              <p className="text-3xl font-bold text-primary">{deviceCount}</p>
             </Card>
             <Card className="border-2 border-border bg-background p-4 text-center">
               <p className="text-xs font-bold text-muted-foreground mb-1">System Load</p>

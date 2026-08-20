@@ -1,10 +1,10 @@
 import { useState } from "react";
-import { Mic, Zap, Copy, Check } from "lucide-react";
+import { Mic, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { usePrompt } from "@/contexts/PromptContext";
+import { analyzePrompt } from "@/lib/promptAnalyzer";
 
 interface AIAnalysis {
   intent: string;
@@ -16,10 +16,10 @@ interface AIAnalysis {
 }
 
 const EXAMPLE_PROMPTS = [
-  "Create a smart factory dashboard",
-  "Generate a water treatment process flow diagram",
-  "Design a motor control schematic",
-  "Create a hospital management UI layout",
+  "Create a simple electrical system with one power source, one circuit breaker, and one motor",
+  "Design a conveyor system with 3 motors, emergency stop, PLC and HMI",
+  "Generate a water treatment process flow diagram with 2 pumps and 2 valves",
+  "Power Systems substation with 2 power sources, 2 transformers, 4 circuit breakers, and 2 motors",
 ];
 
 const INDUSTRIES = [
@@ -33,67 +33,77 @@ const COMPLEXITY_LEVELS = ["Basic", "Intermediate", "Advanced"];
 
 export default function PromptStudio() {
   const { promptData, setPromptData } = usePrompt();
-  const [prompt, setPrompt] = useState(promptData ? promptData.prompt : "");
-  const [selectedIndustry, setSelectedIndustry] = useState(promptData ? promptData.industry : "Industrial Automation");
-  const [selectedComplexity, setSelectedComplexity] = useState(promptData ? promptData.complexity : "Intermediate");
+  const [prompt, setPrompt] = useState(
+    promptData ? promptData.prompt : "Create a simple electrical system with one power source, one circuit breaker, and one motor"
+  );
+  const [selectedIndustry, setSelectedIndustry] = useState(promptData ? promptData.industry : "Power Systems");
+  const [selectedComplexity, setSelectedComplexity] = useState(promptData ? promptData.complexity : "Basic");
   const [analysis, setAnalysis] = useState<AIAnalysis | null>(
     promptData
       ? {
-        intent: promptData.intent,
-        category: promptData.category,
-        confidence: promptData.confidence,
-        components: promptData.components,
-        complexity: promptData.complexity,
-        estimatedTime: promptData.estimatedTime,
-      }
+          intent: promptData.intent,
+          category: promptData.category,
+          confidence: promptData.confidence,
+          components: promptData.components,
+          complexity: promptData.complexity,
+          estimatedTime: promptData.estimatedTime,
+        }
       : null
   );
   const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [copied, setCopied] = useState(false);
 
-  const handleAnalyze = () => {
-    if (!prompt.trim()) return;
+  const runAnalysis = (pText: string, pIndustry: string, pComplexity: string) => {
+    if (!pText.trim()) return;
 
     setIsAnalyzing(true);
 
-    // Simulate AI analysis with timeout
     setTimeout(() => {
-      // Mock AI analysis based on prompt keywords
-      const mockAnalysis: AIAnalysis = {
-        intent: "System Design & Automation",
-        category: "Industrial Schematic",
-        confidence: 94,
-        components: ["PLC", "Motors", "Sensors", "HMI", "Emergency Stop", "Breakers"],
-        complexity: selectedComplexity,
-        estimatedTime: selectedComplexity === "Basic" ? "2-3 min" : selectedComplexity === "Intermediate" ? "5-7 min" : "10-15 min",
-      };
-      setAnalysis(mockAnalysis);
+      const result = analyzePrompt(pText, pIndustry, pComplexity);
 
-      // Save to global context
+      const newAnalysis: AIAnalysis = {
+        intent: result.intent,
+        category: result.category,
+        confidence: result.confidence,
+        components: result.components,
+        complexity: pComplexity,
+        estimatedTime: result.estimatedTime,
+      };
+
+      setAnalysis(newAnalysis);
+
       setPromptData({
-        prompt,
-        industry: selectedIndustry,
-        complexity: selectedComplexity,
-        intent: mockAnalysis.intent,
-        category: mockAnalysis.category,
-        confidence: mockAnalysis.confidence,
-        components: mockAnalysis.components,
-        estimatedTime: mockAnalysis.estimatedTime,
+        prompt: pText,
+        industry: pIndustry,
+        complexity: pComplexity,
+        intent: result.intent,
+        category: result.category,
+        confidence: result.confidence,
+        components: result.components,
+        estimatedTime: result.estimatedTime,
         timestamp: new Date().toISOString(),
       });
 
       setIsAnalyzing(false);
-    }, 800);
+    }, 300);
+  };
+
+  const handleAnalyzeClick = () => {
+    runAnalysis(prompt, selectedIndustry, selectedComplexity);
+  };
+
+  const handleIndustrySelect = (industry: string) => {
+    setSelectedIndustry(industry);
+    runAnalysis(prompt, industry, selectedComplexity);
+  };
+
+  const handleComplexitySelect = (complexity: string) => {
+    setSelectedComplexity(complexity);
+    runAnalysis(prompt, selectedIndustry, complexity);
   };
 
   const handleExampleClick = (example: string) => {
     setPrompt(example);
-  };
-
-  const handleCopyPrompt = () => {
-    navigator.clipboard.writeText(prompt);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    runAnalysis(example, selectedIndustry, selectedComplexity);
   };
 
   return (
@@ -120,7 +130,7 @@ export default function PromptStudio() {
                 <Textarea
                   value={prompt}
                   onChange={(e) => setPrompt(e.target.value)}
-                  placeholder="Describe your industrial system, e.g., 'Design a conveyor system with 3 motors, emergency stop, PLC and HMI'"
+                  placeholder="Describe your industrial system, e.g., 'Create a simple electrical system with one power source, one circuit breaker, and one motor'"
                   className="border-2 border-border bg-background text-foreground min-h-24 resize-none"
                 />
               </div>
@@ -132,11 +142,13 @@ export default function PromptStudio() {
                   {INDUSTRIES.map((industry) => (
                     <button
                       key={industry}
-                      onClick={() => setSelectedIndustry(industry)}
-                      className={`px-3 py-2 border-2 text-sm font-medium transition-all ${selectedIndustry === industry
+                      type="button"
+                      onClick={() => handleIndustrySelect(industry)}
+                      className={`px-3 py-2 border-2 text-sm font-medium transition-all ${
+                        selectedIndustry === industry
                           ? "border-primary bg-primary text-primary-foreground"
                           : "border-border bg-card text-foreground hover:border-primary"
-                        }`}
+                      }`}
                     >
                       {industry}
                     </button>
@@ -151,11 +163,13 @@ export default function PromptStudio() {
                   {COMPLEXITY_LEVELS.map((level) => (
                     <button
                       key={level}
-                      onClick={() => setSelectedComplexity(level)}
-                      className={`px-3 py-2 border-2 text-sm font-medium transition-all ${selectedComplexity === level
+                      type="button"
+                      onClick={() => handleComplexitySelect(level)}
+                      className={`px-3 py-2 border-2 text-sm font-medium transition-all ${
+                        selectedComplexity === level
                           ? "border-primary bg-primary text-primary-foreground"
                           : "border-border bg-card text-foreground hover:border-primary"
-                        }`}
+                      }`}
                     >
                       {level}
                     </button>
@@ -166,7 +180,7 @@ export default function PromptStudio() {
               {/* Action Buttons */}
               <div className="flex gap-3">
                 <Button
-                  onClick={handleAnalyze}
+                  onClick={handleAnalyzeClick}
                   disabled={!prompt.trim() || isAnalyzing}
                   className="flex-1 bg-primary text-primary-foreground border-2 border-primary hover:bg-primary/90 font-bold"
                 >
@@ -189,8 +203,9 @@ export default function PromptStudio() {
                 {EXAMPLE_PROMPTS.map((example, idx) => (
                   <button
                     key={idx}
+                    type="button"
                     onClick={() => handleExampleClick(example)}
-                    className="w-full text-left px-3 py-2 border-2 border-border bg-background text-foreground hover:border-primary transition-all text-sm"
+                    className="w-full text-left px-3 py-2 border-2 border-border bg-background text-foreground hover:border-primary transition-all text-sm font-medium"
                   >
                     {example}
                   </button>
