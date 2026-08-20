@@ -21,10 +21,31 @@ interface PromptContextType {
 const PromptContext = createContext<PromptContextType | undefined>(undefined);
 
 export function PromptProvider({ children }: { children: ReactNode }) {
-  const [promptData, setPromptData] = useState<PromptData | null>(null);
+  const [promptData, setPromptDataState] = useState<PromptData | null>(() => {
+    try {
+      const saved = sessionStorage.getItem("genvisual_prompt_data");
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
+  });
+
+  const setPromptData = (data: PromptData) => {
+    setPromptDataState(data);
+    try {
+      sessionStorage.setItem("genvisual_prompt_data", JSON.stringify(data));
+    } catch (e) {
+      console.error(e);
+    }
+  };
 
   const clearPromptData = () => {
-    setPromptData(null);
+    setPromptDataState(null);
+    try {
+      sessionStorage.removeItem("genvisual_prompt_data");
+    } catch (e) {
+      console.error(e);
+    }
   };
 
   return (

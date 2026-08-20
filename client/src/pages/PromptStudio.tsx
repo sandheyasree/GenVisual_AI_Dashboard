@@ -32,13 +32,24 @@ const INDUSTRIES = [
 const COMPLEXITY_LEVELS = ["Basic", "Intermediate", "Advanced"];
 
 export default function PromptStudio() {
-  const [prompt, setPrompt] = useState("");
-  const [selectedIndustry, setSelectedIndustry] = useState("Industrial Automation");
-  const [selectedComplexity, setSelectedComplexity] = useState("Intermediate");
-  const [analysis, setAnalysis] = useState<AIAnalysis | null>(null);
+  const { promptData, setPromptData } = usePrompt();
+  const [prompt, setPrompt] = useState(promptData ? promptData.prompt : "");
+  const [selectedIndustry, setSelectedIndustry] = useState(promptData ? promptData.industry : "Industrial Automation");
+  const [selectedComplexity, setSelectedComplexity] = useState(promptData ? promptData.complexity : "Intermediate");
+  const [analysis, setAnalysis] = useState<AIAnalysis | null>(
+    promptData
+      ? {
+        intent: promptData.intent,
+        category: promptData.category,
+        confidence: promptData.confidence,
+        components: promptData.components,
+        complexity: promptData.complexity,
+        estimatedTime: promptData.estimatedTime,
+      }
+      : null
+  );
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [copied, setCopied] = useState(false);
-  const { setPromptData } = usePrompt();
 
   const handleAnalyze = () => {
     if (!prompt.trim()) return;
@@ -57,7 +68,7 @@ export default function PromptStudio() {
         estimatedTime: selectedComplexity === "Basic" ? "2-3 min" : selectedComplexity === "Intermediate" ? "5-7 min" : "10-15 min",
       };
       setAnalysis(mockAnalysis);
-      
+
       // Save to global context
       setPromptData({
         prompt,
@@ -70,7 +81,7 @@ export default function PromptStudio() {
         estimatedTime: mockAnalysis.estimatedTime,
         timestamp: new Date().toISOString(),
       });
-      
+
       setIsAnalyzing(false);
     }, 800);
   };
@@ -122,11 +133,10 @@ export default function PromptStudio() {
                     <button
                       key={industry}
                       onClick={() => setSelectedIndustry(industry)}
-                      className={`px-3 py-2 border-2 text-sm font-medium transition-all ${
-                        selectedIndustry === industry
+                      className={`px-3 py-2 border-2 text-sm font-medium transition-all ${selectedIndustry === industry
                           ? "border-primary bg-primary text-primary-foreground"
                           : "border-border bg-card text-foreground hover:border-primary"
-                      }`}
+                        }`}
                     >
                       {industry}
                     </button>
@@ -142,11 +152,10 @@ export default function PromptStudio() {
                     <button
                       key={level}
                       onClick={() => setSelectedComplexity(level)}
-                      className={`px-3 py-2 border-2 text-sm font-medium transition-all ${
-                        selectedComplexity === level
+                      className={`px-3 py-2 border-2 text-sm font-medium transition-all ${selectedComplexity === level
                           ? "border-primary bg-primary text-primary-foreground"
                           : "border-border bg-card text-foreground hover:border-primary"
-                      }`}
+                        }`}
                     >
                       {level}
                     </button>
