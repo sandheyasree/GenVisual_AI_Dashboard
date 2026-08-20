@@ -31,38 +31,57 @@ export default function GraphicGenerator() {
   const illustrationContent = generateIllustrationContent(promptData);
   const plcArchitecture = generatePLCArchitecture(promptData);
 
-  const DiagramMockup = () => (
-    <div className="bg-background border-2 border-border p-8 min-h-96">
-      <div className="mb-4 pb-4 border-b-2 border-border">
-        <p className="text-xs font-bold text-muted-foreground mb-1">BASED ON PROMPT</p>
-        <p className="text-sm font-medium line-clamp-2">{promptData.prompt}</p>
+  const motorCount = promptData
+    ? (() => {
+        const match = promptData.prompt.toLowerCase().match(/(\d+)\s*(?:motor|motors|m\d)/);
+        return match ? parseInt(match[1]) : 3;
+      })()
+    : 3;
+
+  const DiagramMockup = () => {
+    const totalWidth = Math.max(700, 350 + motorCount * 140);
+    return (
+      <div className="bg-background border-2 border-border p-8 min-h-96">
+        <div className="mb-4 pb-4 border-b-2 border-border">
+          <p className="text-xs font-bold text-muted-foreground mb-1">BASED ON PROMPT</p>
+          <p className="text-sm font-medium line-clamp-2">{promptData.prompt}</p>
+        </div>
+        <svg viewBox={`0 0 ${totalWidth} 400`} className="w-full h-auto">
+          <circle cx="100" cy="100" r="30" fill="none" stroke="#1a1a1a" strokeWidth="2" />
+          <text x="100" y="105" textAnchor="middle" fontSize="12" fontWeight="bold">AC</text>
+          <rect x="200" y="80" width="60" height="40" fill="none" stroke="#1a1a1a" strokeWidth="2" />
+          <text x="230" y="105" textAnchor="middle" fontSize="10" fontWeight="bold">CB1</text>
+          <line x1="130" y1="100" x2="200" y2="100" stroke="#1a1a1a" strokeWidth="2" />
+          <line x1="260" y1="100" x2="325" y2="100" stroke="#1a1a1a" strokeWidth="2" />
+
+          {Array.from({ length: motorCount }).map((_, idx) => {
+            const cx = 350 + idx * 140;
+            const isLast = idx === motorCount - 1;
+            return (
+              <g key={idx}>
+                <circle cx={cx} cy="100" r="25" fill="none" stroke="#e63946" strokeWidth="2" />
+                <text x={cx} y="105" textAnchor="middle" fontSize="10" fontWeight="bold" fill="#e63946">
+                  M{idx + 1}
+                </text>
+                {!isLast && (
+                  <line x1={cx + 25} y1="100" x2={cx + 140 - 25} y2="100" stroke="#1a1a1a" strokeWidth="2" />
+                )}
+              </g>
+            );
+          })}
+
+          <rect x="200" y="200" width="80" height="60" fill="none" stroke="#1a1a1a" strokeWidth="2" />
+          <text x="240" y="235" textAnchor="middle" fontSize="11" fontWeight="bold">PLC</text>
+          <rect x="400" y="200" width="80" height="60" fill="none" stroke="#1a1a1a" strokeWidth="2" />
+          <text x="440" y="235" textAnchor="middle" fontSize="11" fontWeight="bold">HMI</text>
+          <circle cx="600" cy="230" r="20" fill="none" stroke="#e63946" strokeWidth="2" />
+          <text x="600" y="235" textAnchor="middle" fontSize="9" fontWeight="bold" fill="#e63946">E-STOP</text>
+          <line x1="240" y1="200" x2="240" y2="150" stroke="#1a1a1a" strokeWidth="1" strokeDasharray="5,5" />
+          <line x1="440" y1="200" x2="440" y2="150" stroke="#1a1a1a" strokeWidth="1" strokeDasharray="5,5" />
+        </svg>
       </div>
-      <svg viewBox="0 0 800 400" className="w-full h-auto">
-        <circle cx="100" cy="100" r="30" fill="none" stroke="#1a1a1a" strokeWidth="2" />
-        <text x="100" y="105" textAnchor="middle" fontSize="12" fontWeight="bold">AC</text>
-        <rect x="200" y="80" width="60" height="40" fill="none" stroke="#1a1a1a" strokeWidth="2" />
-        <text x="230" y="105" textAnchor="middle" fontSize="10" fontWeight="bold">CB1</text>
-        <circle cx="350" cy="100" r="25" fill="none" stroke="#e63946" strokeWidth="2" />
-        <text x="350" y="105" textAnchor="middle" fontSize="10" fontWeight="bold" fill="#e63946">M1</text>
-        <circle cx="500" cy="100" r="25" fill="none" stroke="#e63946" strokeWidth="2" />
-        <text x="500" y="105" textAnchor="middle" fontSize="10" fontWeight="bold" fill="#e63946">M2</text>
-        <circle cx="650" cy="100" r="25" fill="none" stroke="#e63946" strokeWidth="2" />
-        <text x="650" y="105" textAnchor="middle" fontSize="10" fontWeight="bold" fill="#e63946">M3</text>
-        <rect x="200" y="200" width="80" height="60" fill="none" stroke="#1a1a1a" strokeWidth="2" />
-        <text x="240" y="235" textAnchor="middle" fontSize="11" fontWeight="bold">PLC</text>
-        <rect x="400" y="200" width="80" height="60" fill="none" stroke="#1a1a1a" strokeWidth="2" />
-        <text x="440" y="235" textAnchor="middle" fontSize="11" fontWeight="bold">HMI</text>
-        <circle cx="600" cy="230" r="20" fill="none" stroke="#e63946" strokeWidth="2" />
-        <text x="600" y="235" textAnchor="middle" fontSize="9" fontWeight="bold" fill="#e63946">E-STOP</text>
-        <line x1="130" y1="100" x2="200" y2="100" stroke="#1a1a1a" strokeWidth="2" />
-        <line x1="260" y1="100" x2="325" y2="100" stroke="#1a1a1a" strokeWidth="2" />
-        <line x1="375" y1="100" x2="475" y2="100" stroke="#1a1a1a" strokeWidth="2" />
-        <line x1="525" y1="100" x2="625" y2="100" stroke="#1a1a1a" strokeWidth="2" />
-        <line x1="240" y1="200" x2="240" y2="150" stroke="#1a1a1a" strokeWidth="1" strokeDasharray="5,5" />
-        <line x1="440" y1="200" x2="440" y2="150" stroke="#1a1a1a" strokeWidth="1" strokeDasharray="5,5" />
-      </svg>
-    </div>
-  );
+    );
+  };
 
   const UILayoutMockup = () => (
     <div className="bg-background border-2 border-border p-8 min-h-96">
@@ -73,18 +92,12 @@ export default function GraphicGenerator() {
       <div className="bg-card border-2 border-border p-6 max-w-md">
         <h3 className="text-lg font-bold mb-4 border-b-2 border-border pb-2">HMI Dashboard</h3>
         <div className="space-y-3">
-          <div className="flex items-center justify-between p-2 border-2 border-border">
-            <span className="text-sm font-bold">Motor 1 Status</span>
-            <div className="w-3 h-3 bg-primary rounded-full"></div>
-          </div>
-          <div className="flex items-center justify-between p-2 border-2 border-border">
-            <span className="text-sm font-bold">Motor 2 Status</span>
-            <div className="w-3 h-3 bg-primary rounded-full"></div>
-          </div>
-          <div className="flex items-center justify-between p-2 border-2 border-border">
-            <span className="text-sm font-bold">Motor 3 Status</span>
-            <div className="w-3 h-3 bg-muted rounded-full"></div>
-          </div>
+          {Array.from({ length: motorCount }).map((_, idx) => (
+            <div key={idx} className="flex items-center justify-between p-2 border-2 border-border">
+              <span className="text-sm font-bold">Motor {idx + 1} Status</span>
+              <div className={`w-3 h-3 ${idx < 2 ? "bg-primary" : "bg-muted"} rounded-full`}></div>
+            </div>
+          ))}
           <div className="grid grid-cols-2 gap-2 pt-4 border-t-2 border-border">
             <button className="px-3 py-2 bg-primary text-primary-foreground border-2 border-primary font-bold text-sm">
               START
