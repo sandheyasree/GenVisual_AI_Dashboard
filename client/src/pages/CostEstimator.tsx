@@ -1,20 +1,10 @@
 import { Card } from "@/components/ui/card";
 import { AlertCircle } from "lucide-react";
 import { usePrompt } from "@/contexts/PromptContext";
-
-const COST_BREAKDOWN = [
-  { item: "Motors (3x)", cost: 15000 },
-  { item: "PLC System", cost: 25000 },
-  { item: "Drives & Converters", cost: 18000 },
-  { item: "Sensors & Relays", cost: 8000 },
-  { item: "Wiring & Installation", cost: 12000 },
-  { item: "HMI Panel", cost: 10000 },
-];
+import { generateCostBreakdown } from "@/lib/promptAnalyzer";
 
 export default function CostEstimator() {
   const { promptData } = usePrompt();
-  const total = COST_BREAKDOWN.reduce((sum, item) => sum + item.cost, 0);
-  const savings = Math.round(total * 0.12);
 
   if (!promptData) {
     return (
@@ -33,6 +23,10 @@ export default function CostEstimator() {
     );
   }
 
+  const costBreakdown = generateCostBreakdown(promptData);
+  const total = costBreakdown.reduce((sum, item) => sum + item.cost, 0);
+  const savings = Math.round(total * (promptData.complexity === "Advanced" ? 0.18 : promptData.complexity === "Intermediate" ? 0.14 : 0.10));
+
   return (
     <div className="min-h-screen bg-background p-4 md:p-8">
       <div className="max-w-6xl mx-auto">
@@ -41,19 +35,28 @@ export default function CostEstimator() {
           Cost breakdown for: <span className="font-bold text-foreground">"{promptData.prompt}"</span>
         </p>
 
+        <div className="flex flex-wrap gap-2 mb-6 text-xs">
+          <span className="px-2 py-1 bg-primary/10 border-2 border-primary text-foreground font-medium">
+            Industry: {promptData.industry}
+          </span>
+          <span className="px-2 py-1 bg-primary/10 border-2 border-primary text-foreground font-medium">
+            Complexity: {promptData.complexity} Tier
+          </span>
+        </div>
+
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2">
             <Card className="border-2 border-border bg-card p-6">
               <h3 className="text-lg font-bold mb-4">Cost Breakdown</h3>
               <div className="space-y-2">
-                {COST_BREAKDOWN.map((item, idx) => (
+                {costBreakdown.map((item, idx) => (
                   <div key={idx} className="flex items-center justify-between p-3 border-b border-border">
                     <span className="font-medium">{item.item}</span>
                     <span className="font-bold">₹{item.cost.toLocaleString()}</span>
                   </div>
                 ))}
                 <div className="flex items-center justify-between p-3 border-t-2 border-border font-bold text-lg">
-                  <span>Total Cost</span>
+                  <span>Total Project Cost</span>
                   <span className="text-primary">₹{total.toLocaleString()}</span>
                 </div>
               </div>
@@ -64,11 +67,14 @@ export default function CostEstimator() {
             <Card className="border-2 border-border bg-card p-6">
               <p className="text-xs font-bold text-muted-foreground mb-1">TOTAL PROJECT COST</p>
               <p className="text-3xl font-bold text-primary">₹{total.toLocaleString()}</p>
+              <p className="text-xs text-muted-foreground mt-2">Calculated for {promptData.industry}</p>
             </Card>
             <Card className="border-2 border-border bg-card p-6">
               <p className="text-xs font-bold text-muted-foreground mb-1">POTENTIAL SAVINGS</p>
               <p className="text-3xl font-bold text-green-600">₹{savings.toLocaleString()}</p>
-              <p className="text-xs text-muted-foreground mt-2">12% optimization potential</p>
+              <p className="text-xs text-muted-foreground mt-2">
+                {promptData.complexity === "Advanced" ? "18%" : promptData.complexity === "Intermediate" ? "14%" : "10%"} optimization potential
+              </p>
             </Card>
           </div>
         </div>

@@ -1,47 +1,52 @@
 import { Card } from "@/components/ui/card";
-
-const MAINTENANCE_PREDICTIONS = [
-  {
-    component: "Motor 1",
-    health: 95,
-    status: "Excellent",
-    nextMaintenance: "12 months",
-  },
-  {
-    component: "Motor 2",
-    health: 88,
-    status: "Good",
-    nextMaintenance: "6 months - Bearing wear detected",
-  },
-  {
-    component: "Motor 3",
-    health: 92,
-    status: "Good",
-    nextMaintenance: "9 months",
-  },
-  {
-    component: "PLC System",
-    health: 98,
-    status: "Excellent",
-    nextMaintenance: "24 months",
-  },
-  {
-    component: "Drive Unit",
-    health: 85,
-    status: "Fair",
-    nextMaintenance: "3 months - Capacitor aging",
-  },
-];
+import { AlertCircle } from "lucide-react";
+import { usePrompt } from "@/contexts/PromptContext";
+import { generateMaintenancePredictions } from "@/lib/promptAnalyzer";
 
 export default function PredictiveMaintenance() {
+  const { promptData } = usePrompt();
+
+  if (!promptData) {
+    return (
+      <div className="min-h-screen bg-background p-4 md:p-8">
+        <div className="max-w-6xl mx-auto">
+          <h2 className="text-3xl md:text-4xl font-bold mb-2">Predictive Maintenance</h2>
+          <Card className="border-2 border-border bg-card p-8 text-center">
+            <AlertCircle className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+            <p className="text-lg font-bold mb-2">No Prompt Provided</p>
+            <p className="text-muted-foreground">
+              Please enter a prompt in the Prompt Studio first to see maintenance predictions.
+            </p>
+          </Card>
+        </div>
+      </div>
+    );
+  }
+
+  const predictions = generateMaintenancePredictions(promptData);
+
   return (
     <div className="min-h-screen bg-background p-4 md:p-8">
       <div className="max-w-6xl mx-auto">
         <h2 className="text-3xl md:text-4xl font-bold mb-2">Predictive Maintenance</h2>
-        <p className="text-muted-foreground mb-6">AI-powered maintenance predictions and insights</p>
+        <p className="text-muted-foreground mb-4">
+          AI-powered maintenance predictions for: <span className="font-bold text-foreground">"{promptData.prompt}"</span>
+        </p>
+
+        <div className="flex flex-wrap gap-2 mb-6 text-xs">
+          <span className="px-2 py-1 bg-primary/10 border-2 border-primary text-foreground font-medium">
+            Industry: {promptData.industry}
+          </span>
+          <span className="px-2 py-1 bg-primary/10 border-2 border-primary text-foreground font-medium">
+            Complexity: {promptData.complexity}
+          </span>
+          <span className="px-2 py-1 bg-primary/10 border-2 border-primary text-foreground font-medium">
+            Tracked Units: {predictions.length}
+          </span>
+        </div>
 
         <div className="space-y-4">
-          {MAINTENANCE_PREDICTIONS.map((item, idx) => (
+          {predictions.map((item, idx) => (
             <Card key={idx} className="border-2 border-border bg-card p-6">
               <div className="flex items-center justify-between mb-3">
                 <h3 className="text-lg font-bold">{item.component}</h3>

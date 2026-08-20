@@ -1,54 +1,10 @@
 import { Card } from "@/components/ui/card";
 import { Check, X, AlertCircle } from "lucide-react";
 import { usePrompt } from "@/contexts/PromptContext";
-
-interface SafetyCheck {
-  name: string;
-  status: "pass" | "fail" | "warning";
-  description: string;
-  recommendation?: string;
-}
-
-const SAFETY_CHECKS: SafetyCheck[] = [
-  {
-    name: "Overload Protection",
-    status: "pass",
-    description: "Thermal overload relay present on all motors",
-  },
-  {
-    name: "Emergency Stop",
-    status: "pass",
-    description: "Emergency stop button configured and tested",
-  },
-  {
-    name: "Grounding",
-    status: "pass",
-    description: "Proper grounding and bonding implemented",
-  },
-  {
-    name: "Circuit Breaker",
-    status: "pass",
-    description: "Appropriate breaker rating for system load",
-  },
-  {
-    name: "Fault Detection",
-    status: "warning",
-    description: "Limited fault detection capability",
-    recommendation: "Add redundant sensors for critical monitoring",
-  },
-  {
-    name: "Safety Interlock",
-    status: "fail",
-    description: "Missing safety interlock on access points",
-    recommendation: "Install safety switches on all access doors",
-  },
-];
+import { generateSafetyChecks } from "@/lib/promptAnalyzer";
 
 export default function SafetyChecker() {
   const { promptData } = usePrompt();
-  const passCount = SAFETY_CHECKS.filter((c) => c.status === "pass").length;
-  const failCount = SAFETY_CHECKS.filter((c) => c.status === "fail").length;
-  const warningCount = SAFETY_CHECKS.filter((c) => c.status === "warning").length;
 
   if (!promptData) {
     return (
@@ -67,6 +23,11 @@ export default function SafetyChecker() {
     );
   }
 
+  const safetyChecks = generateSafetyChecks(promptData);
+  const passCount = safetyChecks.filter((c) => c.status === "pass").length;
+  const failCount = safetyChecks.filter((c) => c.status === "fail").length;
+  const warningCount = safetyChecks.filter((c) => c.status === "warning").length;
+
   return (
     <div className="min-h-screen bg-background p-4 md:p-8">
       <div className="max-w-6xl mx-auto">
@@ -74,6 +35,15 @@ export default function SafetyChecker() {
         <p className="text-muted-foreground mb-4">
           Safety validation for: <span className="font-bold text-foreground">"{promptData.prompt}"</span>
         </p>
+
+        <div className="flex flex-wrap gap-2 mb-6 text-xs">
+          <span className="px-2 py-1 bg-primary/10 border-2 border-primary text-foreground font-medium">
+            Industry: {promptData.industry}
+          </span>
+          <span className="px-2 py-1 bg-primary/10 border-2 border-primary text-foreground font-medium">
+            Complexity: {promptData.complexity}
+          </span>
+        </div>
 
         <div className="grid grid-cols-3 gap-4 mb-8">
           <Card className="border-2 border-border bg-card p-6 text-center">
@@ -99,7 +69,7 @@ export default function SafetyChecker() {
                 </div>
                 <div>
                   <p className="text-lg font-bold text-green-600">Design is Safe</p>
-                  <p className="text-sm text-muted-foreground">All critical safety checks passed</p>
+                  <p className="text-sm text-muted-foreground">All critical safety checks passed for {promptData.industry}</p>
                 </div>
               </>
             ) : (
@@ -117,7 +87,7 @@ export default function SafetyChecker() {
         </Card>
 
         <div className="space-y-3">
-          {SAFETY_CHECKS.map((check, idx) => (
+          {safetyChecks.map((check, idx) => (
             <Card key={idx} className="border-2 border-border bg-card p-6">
               <div className="flex items-start gap-4">
                 <div className="mt-1">
